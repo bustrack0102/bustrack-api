@@ -1,0 +1,16 @@
+{
+  "envelope": [
+    "Items",
+    "Page",
+    "PageSize",
+    "TotalCount"
+  ],
+  "item": [
+    "RowVersion",
+    "dteFechaRegistro",
+    "id",
+    "strCorreoElectronico",
+    "strNombreUsuario",
+    "strRol"
+  ]
+}

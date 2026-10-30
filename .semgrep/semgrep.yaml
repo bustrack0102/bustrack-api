@@ -1,0 +1,3 @@
+rules: []
+# Stub NV-03/NV-04. Gate real: semgrep scan --config=auto --config=.semgrep/semgrep.yaml --error (0 nuevos).
+# SAST bloqueante Semgrep; Sonar informativo. Constitución §3, §8.

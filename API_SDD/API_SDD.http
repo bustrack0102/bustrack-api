@@ -1,0 +1,6 @@
+@API_SDD_HostAddress = http://localhost:5126
+
+GET {{API_SDD_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

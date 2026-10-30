@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json.schemastore.org/stryker-config",
+  "stryker-config": {
+    "project": "API_SDD/API_SDD.csproj",
+    "test-projects": ["UnitTest/UnitTest.csproj"],
+    "test-case-filter": "FullyQualifiedName~UnitTest",
+    "mutation-level": "Standard",
+    "since": {
+      "enabled": true,
+      "target": "main"
+    },
+    "mutate": ["**/*.cs", "!**/Migrations/*", "!**/*.Designer.cs"],
+    "thresholds": {
+      "high": 80,
+      "low": 60,
+      "break": 0
+    },
+    "reporters": ["cleartext", "json"],
+    "coverage-analysis": "perTest"
+  }
+}

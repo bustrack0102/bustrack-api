@@ -1,0 +1,78 @@
+name: ci-pr
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  pr:
+    # Testcontainers SQL exige contenedores Linux: windows-latest no sirve.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # NV-03: historial completo para el delta (merge-base) y Stryker since:main.
+          fetch-depth: 0
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - uses: actions/setup-python@v5
+        with:
+          python-version: 3.12
+      # Orden §8: restore → build → unit → integration → security → database → contract → critic → endpoints → sdd → coverage → delta-check → stryker → semgrep
+      - name: restore
+        run: dotnet restore
+      - name: build
+        run: dotnet build -c Release --no-restore
+      - name: unit
+        run: dotnet test UnitTest/UnitTest.csproj -c Release --no-build --collect:"XPlat Code Coverage" --results-directory TestResults/UnitTest --settings coverlet.runsettings
+      - name: integration
+        run: dotnet test IntegrationTest/IntegrationTest.csproj -c Release --no-build --collect:"XPlat Code Coverage" --results-directory TestResults/IntegrationTest --settings coverlet.runsettings
+        env:
+          MSSQL_PORT_FIXED: 14333
+      - name: security
+        run: dotnet test SecurityTest/SecurityTest.csproj -c Release --no-build --collect:"XPlat Code Coverage" --results-directory TestResults/SecurityTest --settings coverlet.runsettings
+      - name: database
+        run: dotnet test DatabaseTest/DatabaseTest.csproj -c Release --no-build --collect:"XPlat Code Coverage" --results-directory TestResults/DatabaseTest --settings coverlet.runsettings
+        env:
+          MSSQL_PORT_FIXED: 14333
+      - name: contract
+        run: dotnet test ContractTest/ContractTest.csproj -c Release --no-build --collect:"XPlat Code Coverage" --results-directory TestResults/ContractTest --settings coverlet.runsettings
+        env:
+          CONTRACT_CAPTURE: 0
+      - name: critic
+        # NV-03.1: slnx canónico dentro del step critic (mismo step, orden intacto).
+        run: |
+          pwsh -File scripts/critic-guardrails.ps1
+          pwsh -File scripts/check_slnx.ps1
+      - name: endpoints
+        run: pwsh -File scripts/check_endpoints.ps1
+      - name: sdd-lint
+        run: pwsh -File scripts/check_sdd.ps1
+      - name: coverage-merge
+        shell: pwsh
+        run: |
+          $files = Get-ChildItem -Path "TestResults" -Recurse -Filter "coverage.cobertura.xml"
+          $valid = 0
+          $covered = 0
+          foreach ($f in $files) {
+            [xml]$x = Get-Content -LiteralPath $f.FullName
+            $valid += [int]$x.coverage.'lines-valid'
+            $covered += [int]$x.coverage.'lines-covered'
+          }
+          $pct = if ($valid -gt 0) { [math]::Round(100.0 * $covered / $valid, 2) } else { 0 }
+          "Line coverage: $pct%" | Out-File -Encoding utf8 coverage.txt
+          Get-Content coverage.txt
+      - name: coverage
+        run: python scripts/check_coverage.py --min 45
+      - name: delta-check
+        # NV-03 advisory: informa el 80% del delta, no bloquea (bloqueo real: 45% global).
+        run: python scripts/check_delta_coverage.py --min 80 --advisory
+      - name: stryker
+        # NV-03 advisory: Stryker incremental (since:main) sin break; nunca bloquea el PR.
+        run: |
+          dotnet tool install dotnet-stryker --version 5.0.0 --tool-path .tools/stryker
+          ./.tools/stryker/dotnet-stryker --config-file stryker-config.json
+        continue-on-error: true
+      - name: semgrep
+        uses: returntocorp/semgrep-action@v1

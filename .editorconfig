@@ -1,0 +1,36 @@
+root = true
+
+[*]
+charset = utf-8
+indent_style = space
+indent_size = 4
+end_of_line = crlf
+trim_trailing_whitespace = true
+insert_final_newline = true
+
+[*.cs]
+# Complejidad ≤10 método / ≤15 clase, CA3000+ error — Constitución §5
+dotnet_diagnostic.CA3001.severity = error
+dotnet_diagnostic.CA3002.severity = error
+dotnet_diagnostic.CA3003.severity = error
+dotnet_diagnostic.CA3004.severity = error
+dotnet_diagnostic.CA3005.severity = error
+dotnet_diagnostic.CA3006.severity = error
+dotnet_diagnostic.CA3007.severity = error
+dotnet_diagnostic.CA3008.severity = error
+dotnet_diagnostic.CA3009.severity = error
+dotnet_diagnostic.CA3010.severity = error
+dotnet_diagnostic.CA3011.severity = error
+dotnet_diagnostic.CA3012.severity = error
+dotnet_diagnostic.CA1707.severity = error
+dotnet_diagnostic.S1135.severity = error
+dotnet_code_quality.CA1707.api_surface = all
+
+# Tests: xUnit exige clases y métodos públicos; CA1515 no aplica aquí.
+# CA1707 sigue en error también en tests (nombres PascalCase sin _).
+[{UnitTest,IntegrationTest,SecurityTest,DatabaseTest,ContractTest}/**.cs]
+dotnet_diagnostic.CA1515.severity = none
+
+# Generado (source generators, obj): los analizadores lo omiten.
+[*/obj/**.cs]
+generated_code = true

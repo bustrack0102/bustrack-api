@@ -1,0 +1,8 @@
+<Solution>
+  <Project Path="API_SDD/API_SDD.csproj" />
+  <Project Path="UnitTest/UnitTest.csproj" />
+  <Project Path="IntegrationTest/IntegrationTest.csproj" />
+  <Project Path="SecurityTest/SecurityTest.csproj" />
+  <Project Path="DatabaseTest/DatabaseTest.csproj" />
+  <Project Path="ContractTest/ContractTest.csproj" />
+</Solution>

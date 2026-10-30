@@ -1,0 +1,76 @@
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+
+#nullable disable
+
+namespace ApiSDD.Data.Migrations;
+
+[DbContext(typeof(AppDbContext))]
+[Migration("AddInitialSDDUsuario")]
+public partial class AddInitialSDDUsuario
+{
+    protected override void BuildTargetModel(ModelBuilder modelBuilder)
+    {
+        ArgumentNullException.ThrowIfNull(modelBuilder);
+
+#pragma warning disable 612, 618
+        modelBuilder
+            .HasAnnotation("ProductVersion", "10.0.12")
+            .HasAnnotation("Relational:MaxIdentifierLength", 128);
+
+        modelBuilder.Entity("ApiSDD.Data.Entities.SDDUsuario", b =>
+        {
+            b.Property<int>("id")
+                .ValueGeneratedOnAdd()
+                .HasColumnType("int");
+
+            SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("id"));
+
+            b.Property<DateTime?>("dteFechaRegistro")
+                .HasColumnType("datetime2");
+
+            b.Property<byte[]>("RowVersion")
+                .IsConcurrencyToken()
+                .IsRequired()
+                .ValueGeneratedOnAddOrUpdate()
+                .HasColumnType("rowversion");
+
+            b.Property<string>("strCorreoElectronico")
+                .IsRequired()
+                .HasMaxLength(50)
+                .HasColumnType("nvarchar(50)");
+
+            b.Property<string>("strNombreUsuario")
+                .IsRequired()
+                .HasMaxLength(10)
+                .HasColumnType("nvarchar(10)");
+
+            b.Property<string>("strPWD")
+                .IsRequired()
+                .HasMaxLength(200)
+                .HasColumnType("nvarchar(200)");
+
+            b.Property<string>("strRol")
+                .IsRequired()
+                .ValueGeneratedOnAdd()
+                .HasMaxLength(20)
+                .HasColumnType("nvarchar(20)")
+                .HasDefaultValue("Usuario");
+
+            b.HasKey("id");
+
+            b.HasIndex("strCorreoElectronico")
+                .IsUnique()
+                .HasDatabaseName("IX_SDDUsuario_strCorreoElectronico");
+
+            b.HasIndex("strNombreUsuario")
+                .IsUnique()
+                .HasDatabaseName("IX_SDDUsuario_strNombreUsuario");
+
+            b.ToTable("SDDUsuario", (string)null);
+        });
+#pragma warning restore 612, 618
+    }
+}

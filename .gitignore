@@ -1,0 +1,117 @@
+# Política: jamás secretos en Git (critic B1 → FAIL). Tracked genéricos:
+# appsettings.json + Development.json + Example.json (plantilla pública).
+# Secretos solo en *.Local.json (git-ignored) o env. Ver AGENTS.md §1/§3.
+
+# === .NET build (nunca binarios) ===
+[Bb]in/
+[Oo]bj/
+*.user
+*.rsuser
+*.suo
+*.sln.docstates
+.vs/
+.vscode/
+.idea/
+.rider/
+*.nupkg
+*.snupkg
+*.binlog
+project.lock.json
+
+# === tests / coverage / mutation (pueden llevar connection strings en logs) ===
+TestResults/
+*.trx
+*.coverage
+*.coveragexml
+*.cobertura.xml
+coverage.json
+lcov.info
+.coverage
+coverage*/
+coverage.txt
+StrykerOutput/
+BenchmarkDotNet.Artifacts/
+reports/
+logs/
+*.log
+
+# === publish / run local ===
+publish/
+out/
+artifacts/
+dist/
+docker-compose.override.yml
+
+# === secretos y config local (DevSecOps: denegar por defecto) ===
+# NOTA: API_SDD/Properties/launchSettings.json se mantiene TRACKED genérico
+# (solo localhost, sin secretos). No añadir override con secretos ahí;
+# usar *.Local.json o env. Critic B1 lo verifica.
+appsettings.Local.json
+appsettings.*.Local.json
+*.Private.json
+secrets.json
+secrets/
+.env
+.env.*
+!.env.example
+deploy/.env
+# DataProtection KeysPath fuera de wwwroot — jamás al repo
+keys/
+*_keys/
+*.key.xml
+*.pfx
+*.key
+*.pem
+*.crt
+*.cer
+*.der
+*.jks
+*.keystore
+*.pfx.txt
+*.publishsettings
+*.pubxml
+*.pubxml.user
+
+# === DB locales (canónica externa; locales de contenedores/pruebas fuera) ===
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+*.mdf
+*.ldf
+*.ndf
+
+# === python (scripts/) ===
+__pycache__/
+*.py[cod]
+.venv/
+.venv*/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# === node (tooling .opencode/) ===
+node_modules/
+.npm/
+
+# === SAST / supply-chain (reportes locales, no al repo) ===
+.sonarqube/
+.sonar/
+*.sarif
+.trivy/
+.zap/
+
+# === OS / editor ===
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.DS_Store
+.Spotlight-V100
+.Trashes
+*~
+*.orig
+*.rej
+*.bak
+*.swp
+*.swo

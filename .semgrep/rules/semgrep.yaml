@@ -1,0 +1,32 @@
+rules:
+  - id: bustrack-csharp-no-hardcoded-secret
+    languages: [csharp]
+    severity: ERROR
+    message: No hardcodear secretos; usar configuracion o Key Vault.
+    patterns:
+      - pattern-either:
+          - pattern: |
+              string $X = "...";
+          - pattern: |
+              var $X = "...";
+      - metavariable-regex:
+          metavariable: $X
+          regex: (?i).*(password|secret|apikey|api_key|token|connectionstring).*
+      - metavariable-regex:
+          metavariable: $X
+          regex: .*
+  - id: bustrack-csharp-sql-injection
+    languages: [csharp]
+    severity: ERROR
+    message: Evitar SQL concatenado; usar parametros o EF Core.
+    patterns:
+      - pattern-either:
+          - pattern: new SqlCommand($SQL + $X, ...)
+          - pattern: $CMD.CommandText = $SQL + $X
+  - id: bustrack-csharp-weak-hash
+    languages: [csharp]
+    severity: WARNING
+    message: Evitar MD5/SHA1 para contrasenas.
+    pattern-either:
+      - pattern: MD5.Create()
+      - pattern: SHA1.Create()

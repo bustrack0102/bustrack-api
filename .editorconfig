@@ -4,7 +4,7 @@ root = true
 charset = utf-8
 indent_style = space
 indent_size = 4
-end_of_line = crlf
+end_of_line = unset
 trim_trailing_whitespace = true
 insert_final_newline = true
 
@@ -23,14 +23,18 @@ dotnet_diagnostic.CA3010.severity = error
 dotnet_diagnostic.CA3011.severity = error
 dotnet_diagnostic.CA3012.severity = error
 dotnet_diagnostic.CA1707.severity = error
-dotnet_diagnostic.S1135.severity = error
-dotnet_code_quality.CA1707.api_surface = all
+dotnet_diagnostic.CA1822.severity = error
+dotnet_diagnostic.CA1848.severity = error
+dotnet_diagnostic.CA2007.severity = error
+dotnet_diagnostic.CA2254.severity = error
+dotnet_diagnostic.CA1502.severity = error
+dotnet_diagnostic.CA1505.severity = error
+dotnet_diagnostic.CA1506.severity = error
 
-# Tests: xUnit exige clases y métodos públicos; CA1515 no aplica aquí.
-# CA1707 sigue en error también en tests (nombres PascalCase sin _).
-[{UnitTest,IntegrationTest,SecurityTest,DatabaseTest,ContractTest}/**.cs]
-dotnet_diagnostic.CA1515.severity = none
+[*.{sln,slnx}]
+indent_style = space
+indent_size = 2
 
-# Generado (source generators, obj): los analizadores lo omiten.
-[*/obj/**.cs]
-generated_code = true
+[*.{csproj,props,targets,config}]
+indent_style = space
+indent_size = 2

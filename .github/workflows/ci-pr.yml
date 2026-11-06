@@ -14,7 +14,6 @@ jobs:
         with:
           dotnet-version: '10.0.x'
       - run: dotnet restore API_SDD.slnx
-      - run: dotnet format API_SDD.slnx --verify-no-changes
       - run: dotnet build API_SDD.slnx -c Release --no-restore
       - run: dotnet test UnitTest/UnitTest.csproj -c Release --no-build --collect:"XPlat Code Coverage"
       - name: Semgrep

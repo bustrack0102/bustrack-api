@@ -22,7 +22,7 @@ jobs:
 
       - name: Build and verify API_SDD
         run: |
-          dotnet build API_SDD/API_SDD.csproj -c Release -p:NuGetAudit=false
+          dotnet publish API_SDD/API_SDD.csproj -c Release -p:NuGetAudit=false
 
       - name: Azure Login
         uses: azure/login@v2

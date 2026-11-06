@@ -3,6 +3,11 @@ rules:
     languages: [csharp]
     severity: ERROR
     message: No hardcodear secretos; usar configuracion o Key Vault.
+    paths:
+      exclude:
+        - "UnitTest/**"
+        - "*Test*/**"
+        - "**/UnitTest/**"
     patterns:
       - pattern-either:
           - pattern: |

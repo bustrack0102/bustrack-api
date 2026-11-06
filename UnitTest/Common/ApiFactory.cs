@@ -12,6 +12,7 @@ public class ApiFactory : WebApplicationFactory<Program>
 {
     public const string TestJwtKey = "0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF";
 
+    // nosemgrep: bustrack-csharp-no-hardcoded-secret
     public const string InvalidConnectionString =
         "Server=127.0.0.1,1;Database=API_SDD_Test;User Id=sa;Password=Invalid#1;TrustServerCertificate=True;Connection Timeout=2;";
 

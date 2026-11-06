@@ -9,6 +9,7 @@ public static class TestDataFactory
 
     public const string Email = "usuario01@test.local";
 
+    // nosemgrep: bustrack-csharp-no-hardcoded-secret
     public const string Password = "Aa1!bcde";
 
     public static SDDUsuarioCreateDto NewCreate(

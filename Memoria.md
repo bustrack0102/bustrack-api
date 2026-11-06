@@ -1,6 +1,6 @@
 # Memoria técnica — BusTrack API
 
-> Registro vivo. No se borra historial. Última actualización: 2026-10-30.
+> Registro vivo. No se borra historial. Última actualización: 2026-11-05.
 
 ## 1. Estado real
 
@@ -60,3 +60,11 @@ Expone REST a Flutter y Angular; consume ML/GenAI por HTTP interno y es la fuent
 - **2026-10-30:** auditoría completa, corrección documental y reorganización SDD.
   Se separan specs históricas de canónicas, se corrigen afirmaciones de stack y se
   documentan migraciones, contratos y Azure propuesto.
+- **2026-11-05:** completada la especificación SDD integral de endpoints en `specs-endpoints/` (24 a 40).
+  Se cubren todas las funcionalidades del sistema: diagnóstico/observabilidad (ping, probes RFC 7807, OpenAPI/Scalar),
+  dominio de transporte y catálogos (empresa individual, asociaciones, destinos, medios de transporte, ruta individual,
+  paradas cercanas/individuales), administración de transporte (CRUD Admin empresas, rutas, horarios y tarifas),
+  seguridad avanzada (refresh tokens con rotación, 2FA/MFA para Admin, bootstrap inicial seguro) e integraciones
+  del ecosistema (inferencia de telemetría vial con microservicio ML y recomendaciones asistidas con GenAI acotadas a rutas reales sin invención).
+  Actualizados `specs-endpoints/README.md`, `docs/endpoints.md` y `Memoria.md`.
+- **2026-11-05 (EP-AU-01 a EP-AU-10):** análisis e incorporación de especificaciones SDD para endpoints de autenticación y perfil de usuario solicitados. Se comprobó que `EP-AU-02` (login), `EP-AU-03` (refresh), `EP-AU-04` (logout) y `EP-AU-10` (colección usuarios) ya existían en `13`, `33`, `14` y `16`. Se crearon los 6 endpoints nuevos faltantes: `41-endpoint-auth-registro` (EP-AU-01), `42-endpoint-auth-recuperar-password` (EP-AU-05), `43-endpoint-auth-restablecer-password` (EP-AU-06), `44-endpoint-usuario-perfil-me` (EP-AU-07), `45-endpoint-usuario-perfil-editar` (EP-AU-08) y `46-endpoint-usuario-perfil-baja` (EP-AU-09).

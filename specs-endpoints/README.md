@@ -19,6 +19,29 @@
 | `21-endpoint-horarios` | `GET /api/v1/rutas/{id}/horarios` | Endpoint de horarios | Propuesto |
 | `22-endpoint-tarifas` | `GET /api/v1/rutas/{id}/tarifas` | Endpoint de tarifas | Propuesto |
 | `23-endpoint-calificaciones` | `GET/POST /api/v1/calificaciones` | Endpoint de calificaciones | Propuesto |
+| `24-endpoint-ping` | `GET /api/v1/ping` | Endpoint de ping | Implementado |
+| `25-endpoint-probes` | `GET /api/v1/probe/*` | Endpoints de diagnóstico y sondeo de errores | Implementado |
+| `26-endpoint-documentacion-openapi` | `GET /openapi/v1.json y /scalar/v1` | Endpoints de documentación OpenAPI y Scalar | Implementado |
+| `27-endpoint-empresa-individual` | `GET /api/v1/empresas/{id}` | Endpoint de detalle de empresa de transporte | Propuesto |
+| `28-endpoint-asociaciones` | `GET /api/v1/asociaciones` | Endpoint de cooperativas y asociaciones | Propuesto |
+| `29-endpoint-destinos` | `GET /api/v1/destinos` | Endpoint de destinos y terminales | Propuesto |
+| `30-endpoint-medios-transporte` | `GET /api/v1/medios-transporte` | Endpoint de medios y modalidades de transporte | Propuesto |
+| `31-endpoint-ruta-individual` | `GET /api/v1/rutas/{id}` | Endpoint de detalle de ruta | Propuesto |
+| `32-endpoint-parada-individual` | `GET /api/v1/paradas/{id} y /cercanas` | Endpoint de detalle y cercanía de paradas | Propuesto |
+| `33-endpoint-auth-refresh` | `POST /api/v1/auth/refresh` | Endpoint de refresco y renovación de tokens JWT | Propuesto |
+| `34-endpoint-auth-2fa` | `POST /api/v1/auth/2fa/*` | Endpoint de autenticación de dos factores (2FA / MFA) | Propuesto |
+| `35-endpoint-admin-bootstrap` | `POST /api/v1/admin/bootstrap` | Endpoint de bootstrap inicial de administrador | Propuesto |
+| `36-endpoint-ml-inferencia` | `POST /api/v1/telemetria/inferencia` | Endpoint de inferencia de telemetría y calidad vial (ML) | Propuesto |
+| `37-endpoint-genai-recomendaciones` | `POST /api/v1/recomendaciones` | Endpoint de recomendaciones y planificación de viajes (GenAI) | Propuesto |
+| `38-endpoint-admin-empresas` | `POST/PUT/DELETE /api/v1/empresas` | Endpoint de administración de empresas de transporte | Propuesto |
+| `39-endpoint-admin-rutas` | `POST/PUT/DELETE /api/v1/rutas` | Endpoint de administración de rutas y paradas | Propuesto |
+| `40-endpoint-admin-horarios-tarifas` | `POST/PUT/DELETE /api/v1/rutas/{id}/horarios\|tarifas` | Endpoint de administración de horarios y tarifas | Propuesto |
+| `41-endpoint-auth-registro` | `POST /api/v1/auth/registro` | Endpoint de registro de usuario (EP-AU-01) | Propuesto |
+| `42-endpoint-auth-recuperar-password` | `POST /api/v1/auth/recuperar-password` | Endpoint de solicitud de recuperación de contraseña (EP-AU-05) | Propuesto |
+| `43-endpoint-auth-restablecer-password` | `POST /api/v1/auth/restablecer-password` | Endpoint de restablecimiento de contraseña (EP-AU-06) | Propuesto |
+| `44-endpoint-usuario-perfil-me` | `GET /api/v1/usuarios/me` | Endpoint de consulta de perfil de usuario autenticado (EP-AU-07) | Propuesto |
+| `45-endpoint-usuario-perfil-editar` | `PUT /api/v1/usuarios/me` | Endpoint de edición de perfil de usuario autenticado (EP-AU-08) | Propuesto |
+| `46-endpoint-usuario-perfil-baja` | `DELETE /api/v1/usuarios/me` | Endpoint de baja de cuenta de usuario autenticado (EP-AU-09) | Propuesto |
 
 ## Reglas
 

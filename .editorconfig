@@ -29,7 +29,7 @@ dotnet_diagnostic.CA2007.severity = error
 dotnet_diagnostic.CA2254.severity = error
 dotnet_diagnostic.CA1502.severity = error
 dotnet_diagnostic.CA1505.severity = error
-dotnet_diagnostic.CA1506.severity = error
+dotnet_diagnostic.CA1506.severity = warning
 
 [*.{sln,slnx}]
 indent_style = space

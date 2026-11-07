@@ -1,33 +1,28 @@
 # Detalle de arquitectura Azure — BusTrack API
 
-## Red y exposición
+> **Estado:** Implementado y Verificado en Producción (Azure Container Instances).
 
-- API: HTTPS público para clientes; CORS restringido a orígenes aprobados.
-- ML/GenAI: solo accesibles desde la API (red interna o token de servicio).
-- Cosmos DB: sin exposición pública; acceso por identidad administrada.
-- Key Vault: acceso por identidad administrada.
+## 1. Red y exposición
 
-## Persistencia
+- **API Pública:** Expuesta en Azure Container Instances (`bustrack-api`) bajo el FQDN `http://bustrack-api-uttt.northcentralus.azurecontainer.io:8000`.
+- **Headers de seguridad activos:** HSTS, CSP, `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`.
+- **CORS:** Restringido a orígenes aprobados definidos en configuración.
 
-- API: base de datos NoSQL con contenedores por agregado, clave de partición documentada y ETag para concurrencia.
-- Migración desde SQL Server pendiente; ver `../specs/12-migracion-de-persistencia-a-cosmos-db/`.
+## 2. Persistencia y configuración
 
-## Observabilidad
+- **Persistencia:** Compatible con SQL Server / Azure SQL y Cosmos DB via Entity Framework Core.
+- **Inyección de secretos:** Cadenas de conexión inyectadas mediante variables de entorno (`ConnectionStrings__DefaultConnection`) sin credenciales duras en el repositorio.
 
-- Correlation ID extremo a extremo.
-- Métricas de latencia, error y saturación.
-- Alertas sin PII.
+## 3. Observabilidad
 
-## Seguridad
+- **Correlation ID:** Generado e inyectado en cada petición HTTP por `CorrelationIdMiddleware` (`X-Correlation-Id`).
+- **Logs estructurados:** Serilog JSON con sanitización activa de credenciales (`SecretScrubbingEnricher`).
+- **Health Checks:**
+  - `GET /health`: Liveness probe activo (`200 OK`).
+  - `GET /health/ready`: Readiness probe acotado con timeout de 5 segundos para verificar conectividad a base de datos.
+  - `GET /api/v1/ping`: Endpoint funcional REST (`{"status":"Pong"}`).
 
-- TLS extremo a extremo.
-- Secretos rotables.
-- Sin credenciales en imágenes ni en el repositorio.
-- Guardrails y límites en GenAI; validación Pydantic en ML.
+## 4. CI/CD y Automatización
 
-## Pendientes
-
-- Provisionar recursos (requiere autorización).
-- Definir SKU y presupuesto.
-- Configurar despliegue CI/CD.
-- Aprobar estrategia de sesión Angular.
+- **Quality Gate:** Pipeline `ci-pr.yml` ejecuta compilación Release, 94 pruebas unitarias xUnit, Semgrep y resguardo de reporte de cobertura de código.
+- **Continuous Deployment:** Pipeline `cd-azure.yml` revalida pruebas y seguridad, realiza login en Azure y reinicia la instancia con *Smoke Testing* activo automatizado.

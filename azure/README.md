@@ -1,63 +1,41 @@
-# Arquitectura final de despliegue — BusTrack API
+# Arquitectura de despliegue — BusTrack API
 
-> **Estado:** propuesta. No hay suscripción, grupo de recursos ni despliegue verificado.
-> Esta documentación está separada de las specs funcionales.
+> **Estado:** Desplegado y verificado en Microsoft Azure (`rg-bustrack-ncus`).
 
 ## 1. Rol en BusTrack
 
-App Service Linux (.NET 10) o Container Apps; Cosmos DB for NoSQL; Key Vault; Application Insights. Es la fuente autorizada y el único acceso a Cosmos.
+La API central (`bustrack-api`) es el núcleo backend de orquestación, contratos REST y lógica de negocio para el ecosistema de movilidad BusTrack.
 
-## 2. Topología objetivo
+## 2. Topología en Azure
 
 ```mermaid
 flowchart LR
-  U[Usuarios] --> W[Angular / Static Web Apps]
-  U --> M[Flutter / Google Play]
-  W --> API[API .NET 10]
-  M --> API
-  API --> CO[(Cosmos DB for NoSQL)]
-  API --> ML[ML FastAPI]
-  API --> G[GenAI FastAPI]
-  API --> KV[Key Vault]
-  API --> AI[Application Insights]
-  G --> OAI[OpenAI API]
+  U[Usuarios Móviles & Web] --> API[API .NET 10 / ACI :8000]
+  API --> CO[(Persistencia SQL / Cosmos DB)]
+  API --> AI[Observabilidad / Serilog & HealthChecks]
+  GH[GitHub Actions CD] -->|az container restart| API
 ```
 
-## 3. Recursos y responsabilidad
+## 3. Recursos desplegados
 
-| Recurso | Responsabilidad | Estado |
-|---|---|---|
-| API .NET 10 | Contratos REST, auth, dominio, acceso a Cosmos. | Propuesto |
-| Cosmos DB for NoSQL | Persistencia autorizada; solo la API accede. | Propuesto (hoy SQL Server/EF Core) |
-| Key Vault | Secretos y cadenas de conexión. | Propuesto |
-| Application Insights | Telemetría y alertas. | Propuesto |
-| ML FastAPI | Inferencia interna. | Propuesto (sin código) |
-| GenAI FastAPI | Recomendaciones con grounding. | Propuesto (sin código) |
-| Static Web Apps | Landing Angular. | Propuesto (hoy Razor) |
-| Google Play | Distribución móvil. | Propuesto (sin publicar) |
+| Recurso | Tipo de Servicio | FQDN / Endpoint | Estado |
+|---|---|---|---|
+| **bustrack-api** | Azure Container Instance (North Central US) | `http://bustrack-api-uttt.northcentralus.azurecontainer.io:8000` | 🟢 En línea (200 OK) |
+| **bustrack-landing** | Azure Container Instance (North Central US) | `http://bustrack-landing-uttt.northcentralus.azurecontainer.io:8000` | 🟢 En línea (200 OK) |
 
 ## 4. Configuración y secretos
 
-- Variables por entorno; sin valores reales en el repositorio.
-- Secretos en Key Vault o GitHub Secrets; nunca en el cliente.
-- Identidad administrada para API→Key Vault, API→Cosmos y API→ML/GenAI.
+- Variables por entorno (`ConnectionStrings`, `Jwt`, `Serilog`).
+- Sin credenciales duras en el código; auditoría bloqueante con Semgrep.
+- Credenciales de despliegue resguardadas en GitHub Secrets (`AZURE_CREDENTIALS`).
 
-## 5. Operación
+## 5. Operación y monitoreo
 
-- Monitoreo con Application Insights y health checks.
-- Escalado según carga; límites de tasa en la API.
-- Costos estimados pendientes de medición real.
+- **Liveness probe:** `GET /health` responde `Healthy` (200 OK).
+- **Readiness probe:** `GET /health/ready` valida conectividad de dependencias críticas con timeout acotado de 5s.
+- **REST Ping:** `GET /api/v1/ping` responde `{"status":"Pong"}` con `X-Correlation-Id`.
 
-## 6. Diferencias con el estado actual
+## 6. Referencias
 
-- Persistencia actual: SQL Server + EF Core (API). Objetivo: Cosmos DB.
-- Clientes actuales: Kotlin (mobile) y Razor (landing). Objetivo: Flutter y Angular.
-- ML y GenAI: esqueletos sin código.
-- Sin Dockerfile ni workflows de despliegue en ML/GenAI.
-
-## 7. Referencias
-
-- Tareas: `../specs/`.
-- Endpoints: `../specs-endpoints/`.
-- CI/CD: `../cicd/`.
-- Contratos: `../docs/contratos-integracion.md`.
+- Pipeline de CI/CD: `../cicd/` y `../.github/workflows/`.
+- Memoria técnica detallada: `arquitectura.md`.

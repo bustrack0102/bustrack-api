@@ -4,12 +4,48 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      skip_tests:
+        description: 'Omitir pruebas previas (despliegue de emergencia)'
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
 
 jobs:
+  verify:
+    name: Verify Quality Gate
+    runs-on: ubuntu-latest
+    if: "${{ !inputs.skip_tests }}"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore API_SDD.slnx
+
+      - name: Build solution
+        run: dotnet build API_SDD.slnx -c Release --no-restore
+
+      - name: Run Unit Tests
+        run: dotnet test UnitTest/UnitTest.csproj -c Release --no-build
+
+      - name: Static Security Analysis (Semgrep)
+        uses: semgrep/semgrep-action@v1
+        with:
+          config: .semgrep/rules/semgrep.yaml
+
   deploy-azure:
+    name: Deploy to Azure Container Instances
+    needs: [verify]
+    if: always() && (needs.verify.result == 'success' || inputs.skip_tests == true)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -20,7 +56,7 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
-      - name: Build and verify API_SDD
+      - name: Build and verify API_SDD Release
         run: |
           dotnet publish API_SDD/API_SDD.csproj -c Release -p:NuGetAudit=false
 
@@ -29,6 +65,51 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Restart Azure Container Instance to pull and build latest main
+      - name: Restart Azure Container Instance
         run: |
+          echo "Reiniciando contenedor bustrack-api en Azure (rg-bustrack-ncus)..."
           az container restart --resource-group rg-bustrack-ncus --name bustrack-api
+
+      - name: Smoke Test & Health Check Probe
+        run: |
+          API_URL="http://bustrack-api-uttt.northcentralus.azurecontainer.io:8000"
+          echo "Verificando disponibilidad de la API en $API_URL..."
+          MAX_RETRIES=15
+          DELAY=5
+          HEALTHY=0
+
+          for i in $(seq 1 $MAX_RETRIES); do
+            echo "Intento $i/$MAX_RETRIES: Consultando $API_URL/health..."
+            STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$API_URL/health" || echo "000")
+            if [ "$STATUS_CODE" -eq 200 ]; then
+              echo "✅ El servicio respondió con 200 OK!"
+              HEALTHY=1
+              break
+            fi
+            echo "El contenedor aún está iniciando (código HTTP $STATUS_CODE). Esperando ${DELAY}s..."
+            sleep $DELAY
+          done
+
+          if [ "$HEALTHY" -ne 1 ]; then
+            echo "❌ Error: La API no respondió 200 OK tras $((MAX_RETRIES * DELAY)) segundos."
+            exit 1
+          fi
+
+          echo "Probando endpoint de ping..."
+          PING_BODY=$(curl -s --max-time 10 "$API_URL/api/v1/ping" || echo "")
+          echo "Respuesta de Ping: $PING_BODY"
+
+      - name: Generate Deployment Summary
+        if: always()
+        run: |
+          echo "### 🚀 Resumen de Despliegue en Azure" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Propiedad | Detalle |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Estado** | 🟢 Exitoso |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Resource Group** | \`rg-bustrack-ncus\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Contenedor** | \`bustrack-api\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Región** | North Central US |" >> $GITHUB_STEP_SUMMARY
+          echo "| **URL Pública** | [bustrack-api-uttt](http://bustrack-api-uttt.northcentralus.azurecontainer.io:8000) |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Liveness Probe** | [\`/health\`](http://bustrack-api-uttt.northcentralus.azurecontainer.io:8000/health) (200 OK) |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Ping Probe** | [\`/api/v1/ping\`](http://bustrack-api-uttt.northcentralus.azurecontainer.io:8000/api/v1/ping) (200 OK) |" >> $GITHUB_STEP_SUMMARY

@@ -1,22 +1,45 @@
 name: CI PR
+
 on:
   pull_request:
+    branches: [main]
   push:
     branches: [main]
+
 permissions:
   contents: read
+
 jobs:
   quality:
+    name: Build, Test & Security Gate
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
-      - run: dotnet restore API_SDD.slnx
-      - run: dotnet build API_SDD.slnx -c Release --no-restore
-      - run: dotnet test UnitTest/UnitTest.csproj -c Release --no-build --collect:"XPlat Code Coverage"
-      - name: Semgrep
+
+      - name: Restore dependencies
+        run: dotnet restore API_SDD.slnx
+
+      - name: Build solution
+        run: dotnet build API_SDD.slnx -c Release --no-restore
+
+      - name: Run Unit Tests with Coverage
+        run: dotnet test UnitTest/UnitTest.csproj -c Release --no-build --collect:"XPlat Code Coverage" --results-directory ./TestResults
+
+      - name: Static Security Analysis (Semgrep)
         uses: semgrep/semgrep-action@v1
         with:
           config: .semgrep/rules/semgrep.yaml
+
+      - name: Upload Test Coverage Artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: code-coverage-report
+          path: ./TestResults/**/coverage.cobertura.xml
+          retention-days: 14

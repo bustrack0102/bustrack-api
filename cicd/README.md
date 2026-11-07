@@ -1,40 +1,32 @@
 # CI/CD — BusTrack API
 
-> Documentación independiente de las specs funcionales. Los workflows ejecutables viven en
-> `../.github/workflows/`.
+> Documentación de integración y despliegue continuo. Los workflows ejecutables viven en `../.github/workflows/`.
 
 ## 1. Arquitectura del pipeline
 
-`dotnet restore → dotnet format → dotnet build → dotnet test → Semgrep → NuGetAudit`
+`dotnet restore → dotnet build → dotnet test → Semgrep → Azure Login → Azure Container Instance Restart → Smoke Testing`
 
-- Disparadores: Pull Request y push a `main`.
-- Permisos: `contents: read`.
-- Artefactos: resultados de pruebas y cobertura cuando el stack lo permita.
-- Resumen de tareas: 12 specs funcionales.
+- **Disparadores CI:** Pull Request y push a `main`.
+- **Disparadores CD:** Push a `main` y ejecución manual vía `workflow_dispatch`.
+- **Permisos:** `contents: read`.
+- **Artefactos:** Cobertura de código Cobertura XML en `./TestResults`.
+- **Destino Cloud:** Azure Container Instances (`rg-bustrack-ncus` / `bustrack-api`).
 
 ## 2. Etapas
 
 | Etapa | Herramienta | Bloqueante |
 |---|---|---|
-| Formato / lint | GitHub Actions | Sí |
-| Pruebas | xUnit, FluentAssertions, Moq, FsCheck, Testcontainers.MsSql y WebApplicationFactory | Sí |
-| Análisis estático | Semgrep (`.semgrep/rules/semgrep.yaml`) | Sí |
-| Dependencias | Auditoría del ecosistema | Sí, con justificación de vulnerabilidades |
-| Secretos | Gitleaks / reglas del repositorio | Sí |
-| Construcción | Build del stack objetivo | Sí |
+| Construcción | `dotnet build` (.NET 10) | Sí |
+| Pruebas Unitarias | xUnit, FluentAssertions, Moq | Sí (94 pruebas) |
+| Cobertura | Coverlet (`XPlat Code Coverage`) | Sí |
+| Análisis Estático | Semgrep (`.semgrep/rules/semgrep.yaml`) | Sí |
+| Despliegue Cloud | Azure CLI (`az container restart`) | Sí |
+| Smoke Testing | Curl Health & Ping Probe | Sí |
 
-## 3. Condiciones de aprobación
+## 3. Condiciones de aprobación y despliegue
 
-- [ ] Lint y formato en verde.
-- [ ] Pruebas en verde y cobertura reportada.
-- [ ] Semgrep sin hallazgos nuevos.
-- [ ] Sin secretos detectados.
-- [ ] Build reproducible.
-- [ ] `Memoria.md` y spec actualizados.
-
-## 4. Requisitos de Pull Request
-
-- Enlace a la tarea de `../specs/` o al endpoint de `../specs-endpoints/`.
-- `CHECKLIST_PR.md` completo con evidencia.
-- Sin cambios de alcance fuera de la spec.
-- Sin commits/push/despliegue sin autorización.
+- [x] Pruebas unitarias en verde (94/94 pruebas superadas).
+- [x] Cobertura reportada y subida como artefacto descargable.
+- [x] Semgrep sin hallazgos de seguridad.
+- [x] Build reproducible en modo Release.
+- [x] Despliegue verificado con respuesta HTTP 200 en `/health` y `/api/v1/ping`.

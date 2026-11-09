@@ -151,6 +151,13 @@ internal static class ServiceCollectionExtensions
         // NV-06: logout revocation without touching the pipeline order above.
         services.AddSingleton<ITokenRevocationService, TokenRevocationService>();
 
+        // Cache distribuida en memoria (constitución: sin Redis en MVP).
+        services.AddDistributedMemoryCache();
+
+        // Empresa read slice (list/autocomplete/detail) on MongoDB.
+        services.AddSingleton<ApiSDD.Data.MongoDbContext>();
+        services.AddScoped<ApiSDD.Services.Empresa.IEmpresaService, ApiSDD.Services.Empresa.EmpresaService>();
+
         return services;
 
         static void AddJwt(IServiceCollection services, IConfiguration configuration)

@@ -1,6 +1,6 @@
 # Memoria técnica — BusTrack API
 
-> Registro vivo. No se borra historial. Última actualización: 2026-11-05.
+> Registro vivo. No se borra historial. Última actualización: 2026-11-09.
 
 ## 1. Estado real
 
@@ -68,3 +68,12 @@ Expone REST a Flutter y Angular; consume ML/GenAI por HTTP interno y es la fuent
   del ecosistema (inferencia de telemetría vial con microservicio ML y recomendaciones asistidas con GenAI acotadas a rutas reales sin invención).
   Actualizados `specs-endpoints/README.md`, `docs/endpoints.md` y `Memoria.md`.
 - **2026-11-05 (EP-AU-01 a EP-AU-10):** análisis e incorporación de especificaciones SDD para endpoints de autenticación y perfil de usuario solicitados. Se comprobó que `EP-AU-02` (login), `EP-AU-03` (refresh), `EP-AU-04` (logout) y `EP-AU-10` (colección usuarios) ya existían en `13`, `33`, `14` y `16`. Se crearon los 6 endpoints nuevos faltantes: `41-endpoint-auth-registro` (EP-AU-01), `42-endpoint-auth-recuperar-password` (EP-AU-05), `43-endpoint-auth-restablecer-password` (EP-AU-06), `44-endpoint-usuario-perfil-me` (EP-AU-07), `45-endpoint-usuario-perfil-editar` (EP-AU-08) y `46-endpoint-usuario-perfil-baja` (EP-AU-09).
+- **2026-11-09:** integrados los endpoints de lectura de Empresas en `main` (commit `b256ab0`):
+  `GET /api/v1/empresas`, `GET /api/v1/empresas/autocompletar` y `GET /api/v1/empresas/{id}`.
+  Archivos: `EmpresasController.cs`, `MongoDbContext.cs`, `EmpresaService.cs`, `IEmpresaService.cs`,
+  DTOs `PagedResult`/`Empresa*Dto`, `API_SDD.csproj` (MongoDB.Driver 3.5.1) y `ServiceCollectionExtensions.cs`
+  (DI de MongoDbContext + IEmpresaService + AddDistributedMemoryCache).
+  Motivo: sincronizar el trabajo local del slice Empresas con `main`; el snapshot local era una historia git no emparentada y se integró por archivos, no por merge.
+  Estado: Implementado parcialmente — build Release limpio y 94/94 tests unitarios en verde; **deuda documentada**: sin pruebas de integración contra MongoDB real ni tests unitarios de `EmpresaService`; límite estricto de `tamanoPagina` pendiente; mapeo 503 si falta `MongoDb:ConnectionString`.
+  Riesgo: la persistencia actual es MongoDB Atlas de forma provisional; el objetivo sigue siendo Azure Cosmos DB for NoSQL (la interfaz `MongoDbContext` debe abstraerse antes de la migración).
+  Relación con otros repos: ninguna por ahora (los clientes Flutter/Angular aún no consumen estos endpoints).

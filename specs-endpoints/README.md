@@ -13,7 +13,7 @@
 | `15-endpoint-health` | `GET /health y /health/ready` | Endpoint de salud | Implementado |
 | `16-endpoint-usuarios-coleccion` | `GET/POST /api/v1/usuarios` | Endpoint de colección de usuarios | Implementado |
 | `17-endpoint-usuario-individual` | `GET/PUT/DELETE /api/v1/usuarios/{id}` | Endpoint de usuario individual | Implementado |
-| `18-endpoint-empresas` | `GET /api/v1/empresas` | Endpoint de empresas y asociaciones | Propuesto |
+| `18-endpoint-empresas` | `GET /api/v1/empresas` (+ `/autocompletar`) | Endpoint de empresas y asociaciones | Implementado parcialmente |
 | `19-endpoint-rutas` | `GET /api/v1/rutas` | Endpoint de rutas | Propuesto |
 | `20-endpoint-paradas` | `GET /api/v1/rutas/{id}/paradas` | Endpoint de paradas | Propuesto |
 | `21-endpoint-horarios` | `GET /api/v1/rutas/{id}/horarios` | Endpoint de horarios | Propuesto |
@@ -22,7 +22,7 @@
 | `24-endpoint-ping` | `GET /api/v1/ping` | Endpoint de ping | Implementado |
 | `25-endpoint-probes` | `GET /api/v1/probe/*` | Endpoints de diagnóstico y sondeo de errores | Implementado |
 | `26-endpoint-documentacion-openapi` | `GET /openapi/v1.json y /scalar/v1` | Endpoints de documentación OpenAPI y Scalar | Implementado |
-| `27-endpoint-empresa-individual` | `GET /api/v1/empresas/{id}` | Endpoint de detalle de empresa de transporte | Propuesto |
+| `27-endpoint-empresa-individual` | `GET /api/v1/empresas/{id}` | Endpoint de detalle de empresa de transporte | Implementado parcialmente |
 | `28-endpoint-asociaciones` | `GET /api/v1/asociaciones` | Endpoint de cooperativas y asociaciones | Propuesto |
 | `29-endpoint-destinos` | `GET /api/v1/destinos` | Endpoint de destinos y terminales | Propuesto |
 | `30-endpoint-medios-transporte` | `GET /api/v1/medios-transporte` | Endpoint de medios y modalidades de transporte | Propuesto |

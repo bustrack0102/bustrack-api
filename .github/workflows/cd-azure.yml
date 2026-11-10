@@ -74,8 +74,8 @@ jobs:
         run: |
           API_URL="http://bustrack-api-uttt.northcentralus.azurecontainer.io:8000"
           echo "Verificando disponibilidad de la API en $API_URL..."
-          MAX_RETRIES=15
-          DELAY=5
+          MAX_RETRIES=30
+          DELAY=10
           HEALTHY=0
 
           for i in $(seq 1 $MAX_RETRIES); do

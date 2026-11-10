@@ -77,3 +77,8 @@ Expone REST a Flutter y Angular; consume ML/GenAI por HTTP interno y es la fuent
   Estado: Implementado parcialmente — build Release limpio y 94/94 tests unitarios en verde; **deuda documentada**: sin pruebas de integración contra MongoDB real ni tests unitarios de `EmpresaService`; límite estricto de `tamanoPagina` pendiente; mapeo 503 si falta `MongoDb:ConnectionString`.
   Riesgo: la persistencia actual es MongoDB Atlas de forma provisional; el objetivo sigue siendo Azure Cosmos DB for NoSQL (la interfaz `MongoDbContext` debe abstraerse antes de la migración).
   Relación con otros repos: ninguna por ahora (los clientes Flutter/Angular aún no consumen estos endpoints).
+- **2026-11-10:** corregido fallo de CI (`NU1100`) en `main`: el `NuGet.config` usa `packageSourceMapping` de supply-chain (NV-01, solo nuget.org) y no contemplaba los paquetes del slice MongoDB.
+  Se agregaron los patrones `MongoDB.*`, `DnsClient`, `SharpCompress*`, `Snappier` y `ZstdSharp.*`. Tras la corrección el run `725ea4a` compiló y pasó el quality gate (ci-pr y cd-azure/verify success).
+  Estado: resuelto para CI en Linux; pendiente: vulnerabilidades transitivas NU1902/NU1903 (`System.Security.Cryptography.Pkcs` 9.0.11, `SharpCompress` 0.30.1, `Snappier` 1.0.0) — declaradas como advertencias (no bloquean) y pendientes de parchado de versiones.
+  Riesgo: ninguno conocido; el mapeo de fuentes mantiene la política de un solo feed aprobado (nuget.org).
+  Relación con otros repos: ninguna por ahora.

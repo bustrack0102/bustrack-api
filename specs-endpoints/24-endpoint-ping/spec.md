@@ -60,3 +60,8 @@ Verificar la disponibilidad operativa básica, latencia y respuesta HTTP de la A
 - `docs/contratos-integracion.md`
 - `specs/02-arquitectura-base-y-pipeline-http/`
 
+## Aprobación
+
+- [x] Revisión de arquitectura y contrato completada — fecha: 2026-11-11
+- [x] CHECKLIST_PR.md validado
+- [x] Sin conflicto con constitution.md

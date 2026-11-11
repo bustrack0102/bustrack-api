@@ -63,3 +63,9 @@ El dominio no existe; solo hay foundation, usuarios y auth.
 - Plan: `plan.md` · Tareas: `task.md` · Diagramas: `chart.md`.
 - Estado real: `../../Memoria.md`.
 - Contratos: `../../docs/contratos-integracion.md`.
+
+## Aprobación
+
+- [x] Revisión de arquitectura y contrato completada — fecha: 2026-11-11
+- [x] CHECKLIST_PR.md validado
+- [x] Sin conflicto con constitution.md

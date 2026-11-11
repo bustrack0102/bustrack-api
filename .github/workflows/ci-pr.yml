@@ -31,6 +31,9 @@ jobs:
       - name: Run Unit Tests with Coverage
         run: dotnet test UnitTest/UnitTest.csproj -c Release --no-build --collect:"XPlat Code Coverage" --results-directory ./TestResults
 
+      - name: Validación SDD
+        run: pwsh -File scripts/check_sdd.ps1
+
       - name: Static Security Analysis (Semgrep)
         uses: semgrep/semgrep-action@v1
         with:

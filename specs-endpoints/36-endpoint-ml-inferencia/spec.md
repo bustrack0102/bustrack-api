@@ -92,3 +92,8 @@ Recibir lotes de datos sensoriales (acelerómetro inercial y giroscopio) enviado
 - `constitution.md` §3 y §8
 - `docs/contratos-integracion.md` §3
 
+## Aprobación
+
+- [x] Revisión de arquitectura y contrato completada — fecha: 2026-11-11
+- [x] CHECKLIST_PR.md validado
+- [x] Sin conflicto con constitution.md

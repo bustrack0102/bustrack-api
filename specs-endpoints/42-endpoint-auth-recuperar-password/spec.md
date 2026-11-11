@@ -70,3 +70,9 @@ Iniciar el proceso de recuperación de contraseña desde la Pantalla '¿Olvidast
 - `docs/contratos-integracion.md`
 - `specs/05-autenticacion-jwt/`
 - `specs-endpoints/13-endpoint-login/`
+
+## Aprobación
+
+- [x] Revisión de arquitectura y contrato completada — fecha: 2026-11-11
+- [x] CHECKLIST_PR.md validado
+- [x] Sin conflicto con constitution.md

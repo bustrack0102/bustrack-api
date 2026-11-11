@@ -65,3 +65,9 @@ Listar empresas, asociaciones y medios de transporte. Persistencia objetivo: Cos
 - `docs/contratos-integracion.md`
 - `specs-endpoints/27-endpoint-empresa-individual/` (detalle, slice relacionado)
 - Registro DI: `API_SDD/Hosting/ServiceCollectionExtensions.cs`
+
+## Aprobación
+
+- [x] Revisión de arquitectura y contrato completada — fecha: 2026-11-11
+- [x] CHECKLIST_PR.md validado
+- [x] Sin conflicto con constitution.md

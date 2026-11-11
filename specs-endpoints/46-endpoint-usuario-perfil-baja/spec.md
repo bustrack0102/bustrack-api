@@ -70,3 +70,9 @@ Ejecutar la baja definitiva y revocación de la cuenta del usuario autenticado d
 - `specs/04-gestion-de-usuarios/`
 - `specs-endpoints/14-endpoint-logout/`
 - `specs-endpoints/44-endpoint-usuario-perfil-me/`
+
+## Aprobación
+
+- [x] Revisión de arquitectura y contrato completada — fecha: 2026-11-11
+- [x] CHECKLIST_PR.md validado
+- [x] Sin conflicto con constitution.md

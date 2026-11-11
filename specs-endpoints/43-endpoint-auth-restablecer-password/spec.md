@@ -70,3 +70,9 @@ Completar el cambio de contraseña olvidada desde la Pantalla de Restablecimient
 - `specs/05-autenticacion-jwt/`
 - `specs-endpoints/14-endpoint-logout/`
 - `specs-endpoints/42-endpoint-auth-recuperar-password/`
+
+## Aprobación
+
+- [x] Revisión de arquitectura y contrato completada — fecha: 2026-11-11
+- [x] CHECKLIST_PR.md validado
+- [x] Sin conflicto con constitution.md

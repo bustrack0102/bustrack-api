@@ -78,3 +78,8 @@ Implementar un segundo factor de autenticación obligatorio para cuentas con per
 - `specs/05-autenticacion-jwt/`
 - `specs-endpoints/13-endpoint-login/`
 
+## Aprobación
+
+- [x] Revisión de arquitectura y contrato completada — fecha: 2026-11-11
+- [x] CHECKLIST_PR.md validado
+- [x] Sin conflicto con constitution.md

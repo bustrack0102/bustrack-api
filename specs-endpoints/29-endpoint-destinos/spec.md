@@ -72,3 +72,8 @@ Consultar el catálogo oficial de destinos, terminales de transferencia y cabece
 - `docs/contratos-integracion.md`
 - `specs/07-modelo-de-dominio-de-transporte/`
 
+## Aprobación
+
+- [x] Revisión de arquitectura y contrato completada — fecha: 2026-11-11
+- [x] CHECKLIST_PR.md validado
+- [x] Sin conflicto con constitution.md

@@ -71,3 +71,8 @@ Listar y consultar información de cooperativas, gremios y asociaciones de trans
 - `docs/contratos-integracion.md`
 - `specs/08-consulta-de-empresas-y-asociaciones/`
 
+## Aprobación
+
+- [x] Revisión de arquitectura y contrato completada — fecha: 2026-11-11
+- [x] CHECKLIST_PR.md validado
+- [x] Sin conflicto con constitution.md

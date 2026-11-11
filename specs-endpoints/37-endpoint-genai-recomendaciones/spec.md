@@ -89,3 +89,8 @@ Brindar recomendaciones de rutas, combinaciones de transporte y respuestas a dud
 - `docs/contratos-integracion.md` §3
 - `specs/07-modelo-de-dominio-de-transporte/`
 
+## Aprobación
+
+- [x] Revisión de arquitectura y contrato completada — fecha: 2026-11-11
+- [x] CHECKLIST_PR.md validado
+- [x] Sin conflicto con constitution.md

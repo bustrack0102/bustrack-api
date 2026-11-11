@@ -76,3 +76,9 @@ Permitir al usuario autenticado actualizar los datos de su propio perfil desde l
 - `specs/04-gestion-de-usuarios/`
 - `specs/05-autenticacion-jwt/`
 - `specs-endpoints/44-endpoint-usuario-perfil-me/`
+
+## Aprobación
+
+- [x] Revisión de arquitectura y contrato completada — fecha: 2026-11-11
+- [x] CHECKLIST_PR.md validado
+- [x] Sin conflicto con constitution.md

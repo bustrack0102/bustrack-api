@@ -88,3 +88,8 @@ Permitir a los administradores registrar, actualizar vigencias y eliminar tablas
 - `specs-endpoints/21-endpoint-horarios/`
 - `specs-endpoints/22-endpoint-tarifas/`
 
+## Aprobación
+
+- [x] Revisión de arquitectura y contrato completada — fecha: 2026-11-11
+- [x] CHECKLIST_PR.md validado
+- [x] Sin conflicto con constitution.md

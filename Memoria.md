@@ -121,3 +121,7 @@ Expone REST a Flutter y Angular; consume ML/GenAI por HTTP interno y es la fuent
   Decisiones del equipo (2026-11-11): (a) conservar `EmpresaService`/`MongoDbContext` (MongoDB) aunque sigue desconectado de los controladores — deuda y decisión pendiente; (b) las pruebas de integración de los 22 endpoints EP-AU/EP-EM quedan pendientes (requieren Docker, solo verificables en CI).
   Riesgo: la migración existe pero NO está aplicada a ninguna BD real; BE-35 (envío de correo de recuperación) no existe — el token se genera y persiste pero no se envía; el lockout de BD sigue siendo solo del login legacy (login V2 cubierto por rate limiting HTTP, conforme a la spec EP-AU-02).
   Relación con otros repos: ninguna por ahora (Flutter/Angular aún no consumen estos endpoints).
+- **2026-11-11 (Rutas, Paradas, Moderación, Inferencia, Resiliencia y Puerta SDD):**
+  - Implementados `RutasController`, `ParadasController`, `ModeracionController` (`47-endpoint-moderacion`), `InferenciaController` (`/telemetria/inferencia`, `/recomendaciones`) y degradación resiliente en `EmpresaSqlService`, `MedioTransporteService` y `MongoDbHealthCheck`.
+  - Agregada suite `UnitTest/Controllers/V1EndpointsTests.cs` verificando rutas, Haversine, moderación (prompt injection / PII / vocabulario / URIs), inferencia inercial, recomendaciones y fallback sin SQL externo.
+  - Reparada puerta SDD (`scripts/check_sdd.ps1`, `docs/endpoints.md`, `specs*/**/spec.md` con bloque `## Aprobación`, `specs/*/checklists/pr.md`) e integrada en `.github/workflows/ci-pr.yml`.

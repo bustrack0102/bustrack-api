@@ -77,3 +77,8 @@ Consultar la información detallada de una parada de transporte específica y bu
 - `specs/09-consulta-de-rutas-y-paradas/`
 - `specs-endpoints/20-endpoint-paradas/`
 
+## Aprobación
+
+- [x] Revisión de arquitectura y contrato completada — fecha: 2026-11-11
+- [x] CHECKLIST_PR.md validado
+- [x] Sin conflicto con constitution.md

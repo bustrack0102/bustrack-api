@@ -67,3 +67,9 @@ Obtener la información del perfil del usuario autenticado en la Pantalla de Per
 - `specs/04-gestion-de-usuarios/`
 - `specs/05-autenticacion-jwt/`
 - `specs-endpoints/17-endpoint-usuario-individual/`
+
+## Aprobación
+
+- [x] Revisión de arquitectura y contrato completada — fecha: 2026-11-11
+- [x] CHECKLIST_PR.md validado
+- [x] Sin conflicto con constitution.md

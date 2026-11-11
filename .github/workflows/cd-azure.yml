@@ -91,44 +91,22 @@ jobs:
           docker push "$TAG_LATEST"
           echo "IMAGE_TAG=$TAG" >> $GITHUB_ENV
 
-      - name: Export current container group configuration
+      - name: Deploy container to Azure Container Instances
         run: |
-          az container export \
-            --resource-group rg-bustrack-ncus \
-            --name bustrack-api \
-            --file group-original.yml
-          cat group-original.yml
-
-      - name: Prepare deployment YAML (new image + ACR credentials)
-        run: |
-          python3 -m pip install --quiet pyyaml
-          python3 - <<'EOF'
-          import os, yaml
-          with open('group-original.yml') as f:
-              doc = yaml.safe_load(f)
-          props = doc.get('properties', doc)
-          container = props['containers'][0]
-          container_props = container.get('properties', container)
-          container_props['image'] = os.environ['IMAGE_TAG']
-          container_props.pop('command', None)
-          props['imageRegistryCredentials'] = [{
-              'server': os.environ['ACR_LOGIN_SERVER'],
-              'username': os.environ['ACR_USERNAME'],
-              'password': os.environ['ACR_PASSWORD'],
-          }]
-          with open('group-deploy.yml', 'w') as f:
-              yaml.safe_dump(doc, f, sort_keys=False, default_flow_style=False)
-          print(open('group-deploy.yml').read())
-          EOF
-
-      - name: Replace Azure Container Instance with new image
-        run: |
-          az container delete \
-            --resource-group rg-bustrack-ncus \
-            --name bustrack-api --yes
+          echo "Desplegando contenedor bustrack-api en Azure (rg-bustrack-ncus)..."
           az container create \
             --resource-group rg-bustrack-ncus \
-            --file group-deploy.yml
+            --name bustrack-api \
+            --image "$IMAGE_TAG" \
+            --registry-login-server "$ACR_LOGIN_SERVER" \
+            --registry-username "$ACR_USERNAME" \
+            --registry-password "$ACR_PASSWORD" \
+            --dns-name-label bustrack-api-uttt \
+            --ports 8000 \
+            --os-type Linux \
+            --cpu 1 \
+            --memory 1.5 \
+            --environment-variables PORT=8000 ASPNETCORE_ENVIRONMENT=Production
 
       - name: Smoke Test & Health Check Probe
         run: |

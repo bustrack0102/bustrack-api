@@ -65,7 +65,7 @@ public sealed class PasswordHasherTests
     [Fact]
     public void TamperedHashFails()
     {
-        var tampered = Sample[..^1] + (Sample[^1] == 'A' ? 'B' : 'A');
+        var tampered = Sample[..^2] + (Sample[^2] == 'A' ? 'B' : 'A') + Sample[^1];
 
         Hasher.Verify(tampered, TestDataFactory.Password).Should().BeFalse();
     }

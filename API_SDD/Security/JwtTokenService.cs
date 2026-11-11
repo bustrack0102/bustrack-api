@@ -7,7 +7,7 @@ using Microsoft.IdentityModel.Tokens;
 namespace ApiSDD.Security;
 
 /// <summary>
-/// nv-05: HS256 access token emitter. Options are read lazily per call so WAF
+/// nv-05 / EP-AU: HS256 access token emitter. Options are read lazily per call so WAF
 /// overrides apply; secrets never leave this boundary.
 /// </summary>
 internal sealed class JwtTokenService : IJwtTokenService
@@ -24,6 +24,12 @@ internal sealed class JwtTokenService : IJwtTokenService
 
     public (string Token, DateTime Expires) CreateAccessToken(int userId, string role)
     {
+        return CreateAccessToken(userId.ToString(System.Globalization.CultureInfo.InvariantCulture), role);
+    }
+
+    public (string Token, DateTime Expires) CreateAccessToken(string userId, string role)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(userId);
         ArgumentException.ThrowIfNullOrEmpty(role);
         var current = _options.CurrentValue;
         if (Encoding.UTF8.GetByteCount(current.Key) < 32)
@@ -57,7 +63,7 @@ internal sealed class JwtTokenService : IJwtTokenService
             SigningCredentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256),
             Subject = new ClaimsIdentity(
             [
-                new Claim("sub", userId.ToString(System.Globalization.CultureInfo.InvariantCulture)),
+                new Claim("sub", userId),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString("N")),
                 new Claim("role", role),
             ]),

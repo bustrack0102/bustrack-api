@@ -157,6 +157,9 @@ internal static class ServiceCollectionExtensions
         // Empresa read slice (list/autocomplete/detail) on MongoDB.
         services.AddSingleton<ApiSDD.Data.MongoDbContext>();
         services.AddScoped<ApiSDD.Services.Empresa.IEmpresaService, ApiSDD.Services.Empresa.EmpresaService>();
+        services.AddScoped<ApiSDD.Services.Empresa.IEmpresaSqlService, ApiSDD.Services.Empresa.EmpresaSqlService>();
+        services.AddScoped<ApiSDD.Services.IUsuarioPerfilService, ApiSDD.Services.UsuarioPerfilService>();
+        services.AddScoped<ApiSDD.Services.MedioTransporte.IMedioTransporteService, ApiSDD.Services.MedioTransporte.MedioTransporteService>();
 
         return services;
 

@@ -1,6 +1,6 @@
-# 27-endpoint-empresa-individual — Endpoint de detalle de empresa de transporte
+﻿# 27-endpoint-empresa-individual — Endpoint de detalle de empresa de transporte
 
-> Repositorio: BusTrack API · Endpoint: `GET /api/v1/empresas/{id}` · Estado: Propuesto · Fecha: 2026-11-05.
+> Repositorio: BusTrack API · Endpoint: `GET /api/v1/empresas/{id}` · Estado: Implementado · Fecha: 2026-11-05.
 
 ## 1. Objetivo
 
@@ -14,7 +14,7 @@ Obtener la información detallada de una empresa de transporte concesionaria o p
 | Ruta | `/api/v1/empresas/{id}` |
 | Autenticación | Opcional / Pública o JWT de usuario móvil/web |
 | Consumidor | Flutter y Angular |
-| Estado | Propuesto |
+| Estado | Implementado |
 
 **Parámetros / entrada:**
 

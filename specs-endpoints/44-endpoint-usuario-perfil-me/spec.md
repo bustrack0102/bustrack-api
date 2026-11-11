@@ -1,6 +1,6 @@
-# 44-endpoint-usuario-perfil-me — Endpoint de consulta de perfil de usuario autenticado (EP-AU-07)
+﻿# 44-endpoint-usuario-perfil-me — Endpoint de consulta de perfil de usuario autenticado (EP-AU-07)
 
-> Repositorio: BusTrack API · Endpoint: `GET /api/v1/usuarios/me` · Código: EP-AU-07 · Estado: Propuesto · Fecha: 2026-11-05.
+> Repositorio: BusTrack API · Endpoint: `GET /api/v1/usuarios/me` · Código: EP-AU-07 · Estado: Implementado · Fecha: 2026-11-05.
 
 ## 1. Objetivo
 
@@ -15,7 +15,7 @@ Obtener la información del perfil del usuario autenticado en la Pantalla de Per
 | Código Tarea | `EP-AU-07` |
 | Autenticación | Usuario / Admin (JWT requerido) |
 | Consumidor | Flutter (Móvil) y Angular (Web) |
-| Estado | Propuesto |
+| Estado | Implementado |
 
 **Parámetros / entrada:**
 

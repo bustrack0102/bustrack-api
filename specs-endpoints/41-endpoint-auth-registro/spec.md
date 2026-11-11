@@ -1,6 +1,6 @@
-# 41-endpoint-auth-registro — Endpoint de registro de usuario (EP-AU-01)
+﻿# 41-endpoint-auth-registro — Endpoint de registro de usuario (EP-AU-01)
 
-> Repositorio: BusTrack API · Endpoint: `POST /api/v1/auth/registro` · Código: EP-AU-01 · Estado: Propuesto · Fecha: 2026-11-05.
+> Repositorio: BusTrack API · Endpoint: `POST /api/v1/auth/registro` · Código: EP-AU-01 · Estado: Implementado · Fecha: 2026-11-05.
 
 ## 1. Objetivo
 
@@ -15,7 +15,7 @@ Registrar una nueva cuenta de usuario final en BusTrack desde la Pantalla de Reg
 | Código Tarea | `EP-AU-01` |
 | Autenticación | Público |
 | Consumidor | Flutter (Móvil) y Angular (Web) |
-| Estado | Propuesto |
+| Estado | Implementado |
 
 **Parámetros / entrada:**
 

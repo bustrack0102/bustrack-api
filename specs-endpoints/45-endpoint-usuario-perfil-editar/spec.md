@@ -1,6 +1,6 @@
-# 45-endpoint-usuario-perfil-editar — Endpoint de edición de perfil de usuario autenticado (EP-AU-08)
+﻿# 45-endpoint-usuario-perfil-editar — Endpoint de edición de perfil de usuario autenticado (EP-AU-08)
 
-> Repositorio: BusTrack API · Endpoint: `PUT /api/v1/usuarios/me` · Código: EP-AU-08 · Estado: Propuesto · Fecha: 2026-11-05.
+> Repositorio: BusTrack API · Endpoint: `PUT /api/v1/usuarios/me` · Código: EP-AU-08 · Estado: Implementado · Fecha: 2026-11-05.
 
 ## 1. Objetivo
 
@@ -15,7 +15,7 @@ Permitir al usuario autenticado actualizar los datos de su propio perfil desde l
 | Código Tarea | `EP-AU-08` |
 | Autenticación | Usuario / Admin (JWT requerido) |
 | Consumidor | Flutter (Móvil) y Angular (Web) |
-| Estado | Propuesto |
+| Estado | Implementado |
 
 **Parámetros / entrada:**
 

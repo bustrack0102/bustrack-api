@@ -1,6 +1,6 @@
-# 38-endpoint-admin-empresas — Endpoint de administración de empresas de transporte
+﻿# 38-endpoint-admin-empresas — Endpoint de administración de empresas de transporte
 
-> Repositorio: BusTrack API · Endpoint: `POST/PUT/DELETE /api/v1/empresas` · Estado: Propuesto · Fecha: 2026-11-05.
+> Repositorio: BusTrack API · Endpoint: `POST/PUT/DELETE /api/v1/empresas` · Estado: Implementado · Fecha: 2026-11-05.
 
 ## 1. Objetivo
 
@@ -14,7 +14,7 @@ Permitir a los usuarios administradores del sistema crear, actualizar y dar de b
 | Ruta | `/api/v1/empresas` y `/api/v1/empresas/{id}` |
 | Autenticación | JWT con claim `role: Admin` (`AdminPolicy`) |
 | Consumidor | Angular (Panel de Administración) |
-| Estado | Propuesto |
+| Estado | Implementado |
 
 **Operaciones:**
 

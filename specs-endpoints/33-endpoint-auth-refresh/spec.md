@@ -1,6 +1,6 @@
-# 33-endpoint-auth-refresh — Endpoint de refresco y renovación de tokens JWT
+﻿# 33-endpoint-auth-refresh — Endpoint de refresco y renovación de tokens JWT
 
-> Repositorio: BusTrack API · Endpoint: `POST /api/v1/auth/refresh` · Estado: Propuesto · Fecha: 2026-11-05.
+> Repositorio: BusTrack API · Endpoint: `POST /api/v1/auth/refresh` · Estado: Implementado · Fecha: 2026-11-05.
 
 ## 1. Objetivo
 
@@ -14,7 +14,7 @@ Renovar un token de acceso JWT HS256 expirado utilizando un token de refresco cr
 | Ruta | `/api/v1/auth/refresh` |
 | Autenticación | Refresh Token en cuerpo o encabezado |
 | Consumidor | Flutter y Angular |
-| Estado | Propuesto |
+| Estado | Implementado |
 
 **Parámetros / entrada:**
 

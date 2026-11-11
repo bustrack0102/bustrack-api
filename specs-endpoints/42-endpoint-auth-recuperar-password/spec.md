@@ -1,6 +1,6 @@
-# 42-endpoint-auth-recuperar-password — Endpoint de solicitud de recuperación de contraseña (EP-AU-05)
+﻿# 42-endpoint-auth-recuperar-password — Endpoint de solicitud de recuperación de contraseña (EP-AU-05)
 
-> Repositorio: BusTrack API · Endpoint: `POST /api/v1/auth/recuperar-password` · Código: EP-AU-05 · Estado: Propuesto · Fecha: 2026-11-05.
+> Repositorio: BusTrack API · Endpoint: `POST /api/v1/auth/recuperar-password` · Código: EP-AU-05 · Estado: Implementado · Fecha: 2026-11-05.
 
 ## 1. Objetivo
 
@@ -15,7 +15,7 @@ Iniciar el proceso de recuperación de contraseña desde la Pantalla '¿Olvidast
 | Código Tarea | `EP-AU-05` |
 | Autenticación | Público |
 | Consumidor | Flutter (Móvil) y Angular (Web) |
-| Estado | Propuesto |
+| Estado | Implementado |
 
 **Parámetros / entrada:**
 

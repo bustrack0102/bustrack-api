@@ -22,6 +22,282 @@ namespace ApiSDD.Data.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("ApiSDD.Data.Entities.Empresa", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("Activo")
+                        .HasColumnType("bit");
+
+                    b.Property<decimal>("CalificacionPromedio")
+                        .HasColumnType("decimal(3,2)");
+
+                    b.Property<string>("Descripcion")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("FechaActualizacion")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("FuenteDatoId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("HorarioAtencion")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("LogoUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("MunicipioBase")
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<string>("Siglas")
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<string>("SitioWeb")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("TelefonoContacto")
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<int>("TotalCalificaciones")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id")
+                        .HasName("pk_empresas");
+
+                    b.HasIndex("MunicipioBase")
+                        .HasDatabaseName("idx_empresas_municipio");
+
+                    b.HasIndex("Nombre")
+                        .IsUnique()
+                        .HasDatabaseName("uk_empresas_nombre");
+
+                    b.HasIndex("Activo", "CalificacionPromedio", "TotalCalificaciones")
+                        .HasDatabaseName("idx_empresas_activa_calificacion");
+
+                    b.ToTable("empresas", (string)null);
+                });
+
+            modelBuilder.Entity("ApiSDD.Data.Entities.MedioTransporte", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("Activo")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Clave")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<string>("Descripcion")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime?>("FechaActualizacion")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("IconoClave")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)");
+
+                    b.HasKey("Id")
+                        .HasName("pk_medios_transporte");
+
+                    b.HasIndex("Clave")
+                        .IsUnique()
+                        .HasDatabaseName("idx_medios_transporte_clave");
+
+                    b.HasIndex("Nombre")
+                        .IsUnique()
+                        .HasDatabaseName("uk_medios_transporte_nombre");
+
+                    b.HasIndex("Activo", "Nombre")
+                        .HasDatabaseName("idx_medios_transporte_activo");
+
+                    b.ToTable("medios_transporte", (string)null);
+                });
+
+            modelBuilder.Entity("ApiSDD.Data.Entities.RefreshToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("DispositivoInfo")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<DateTime>("FechaExpiracion")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("FechaRevocacion")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("ReemplazadoPorTokenId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("Revocado")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<Guid>("UsuarioId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id")
+                        .HasName("pk_refresh_tokens");
+
+                    b.HasIndex("FechaExpiracion")
+                        .HasDatabaseName("idx_refresh_tokens_expiracion");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique()
+                        .HasDatabaseName("idx_refresh_tokens_token_hash");
+
+                    b.HasIndex("UsuarioId", "FechaExpiracion", "Revocado")
+                        .HasDatabaseName("idx_refresh_tokens_usuario_activos");
+
+                    b.ToTable("refresh_tokens", (string)null);
+                });
+
+            modelBuilder.Entity("ApiSDD.Data.Entities.Rol", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Descripcion")
+                        .HasMaxLength(250)
+                        .HasColumnType("nvarchar(250)");
+
+                    b.Property<DateTime>("FechaCreacion")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.HasKey("Id")
+                        .HasName("pk_roles");
+
+                    b.HasIndex("Nombre")
+                        .IsUnique()
+                        .HasDatabaseName("uk_roles_nombre");
+
+                    b.ToTable("roles", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Descripcion = "Usuario final del sistema",
+                            FechaCreacion = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Nombre = "Usuario"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Descripcion = "Administrador del sistema",
+                            FechaCreacion = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Nombre = "Administrador"
+                        });
+                });
+
+            modelBuilder.Entity("ApiSDD.Data.Entities.Ruta", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("Activo")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Codigo")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<string>("DiasOperacion")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<Guid>("EmpresaId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("FechaActualizacion")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("FrecuenciaMinutos")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MedioTransporteId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<string>("ParadaDestino")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("ParadaOrigen")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("PrimerHorario")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<decimal>("TarifaBaseMxn")
+                        .HasColumnType("decimal(8,2)");
+
+                    b.Property<string>("UltimoHorario")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.HasKey("Id")
+                        .HasName("pk_rutas");
+
+                    b.HasIndex("MedioTransporteId");
+
+                    b.HasIndex("EmpresaId", "MedioTransporteId")
+                        .HasDatabaseName("idx_rutas_empresa_medio");
+
+                    b.ToTable("rutas", (string)null);
+                });
+
             modelBuilder.Entity("ApiSDD.Data.Entities.SDDSegBloqueo", b =>
                 {
                     b.Property<string>("strNombreUsuario")
@@ -95,6 +371,174 @@ namespace ApiSDD.Data.Migrations
                         .HasDatabaseName("IX_SDDUsuario_strNombreUsuario");
 
                     b.ToTable("SDDUsuario", (string)null);
+                });
+
+            modelBuilder.Entity("ApiSDD.Data.Entities.TokenRecuperacion", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("FechaCreacion")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("FechaExpiracion")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("FechaUso")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<bool>("Usado")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid>("UsuarioId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id")
+                        .HasName("pk_tokens_recuperacion");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique()
+                        .HasDatabaseName("idx_tokens_recup_hash");
+
+                    b.HasIndex("UsuarioId", "FechaExpiracion", "Usado")
+                        .HasDatabaseName("idx_tokens_recup_usuario_vigentes");
+
+                    b.ToTable("tokens_recuperacion", (string)null);
+                });
+
+            modelBuilder.Entity("ApiSDD.Data.Entities.Usuario", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("Activo")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("ConsentimientoSensores")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Correo")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<DateTime?>("FechaActualizacion")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("FechaAvisoPrivacidad")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("FechaCreacion")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("NombreCompleto")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<string>("PasswordHash")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<int>("RolId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UltimoAcceso")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id")
+                        .HasName("pk_usuarios");
+
+                    b.HasIndex("Correo")
+                        .IsUnique()
+                        .HasDatabaseName("uk_usuarios_correo");
+
+                    b.HasIndex("RolId", "Activo", "FechaCreacion")
+                        .HasDatabaseName("idx_usuarios_rol_activo");
+
+                    b.ToTable("usuarios", (string)null);
+                });
+
+            modelBuilder.Entity("ApiSDD.Data.Entities.RefreshToken", b =>
+                {
+                    b.HasOne("ApiSDD.Data.Entities.Usuario", "Usuario")
+                        .WithMany("RefreshTokens")
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Usuario");
+                });
+
+            modelBuilder.Entity("ApiSDD.Data.Entities.Ruta", b =>
+                {
+                    b.HasOne("ApiSDD.Data.Entities.Empresa", "Empresa")
+                        .WithMany("Rutas")
+                        .HasForeignKey("EmpresaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ApiSDD.Data.Entities.MedioTransporte", "MedioTransporte")
+                        .WithMany("Rutas")
+                        .HasForeignKey("MedioTransporteId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Empresa");
+
+                    b.Navigation("MedioTransporte");
+                });
+
+            modelBuilder.Entity("ApiSDD.Data.Entities.TokenRecuperacion", b =>
+                {
+                    b.HasOne("ApiSDD.Data.Entities.Usuario", "Usuario")
+                        .WithMany("TokensRecuperacion")
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Usuario");
+                });
+
+            modelBuilder.Entity("ApiSDD.Data.Entities.Usuario", b =>
+                {
+                    b.HasOne("ApiSDD.Data.Entities.Rol", "Rol")
+                        .WithMany("Usuarios")
+                        .HasForeignKey("RolId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Rol");
+                });
+
+            modelBuilder.Entity("ApiSDD.Data.Entities.Empresa", b =>
+                {
+                    b.Navigation("Rutas");
+                });
+
+            modelBuilder.Entity("ApiSDD.Data.Entities.MedioTransporte", b =>
+                {
+                    b.Navigation("Rutas");
+                });
+
+            modelBuilder.Entity("ApiSDD.Data.Entities.Rol", b =>
+                {
+                    b.Navigation("Usuarios");
+                });
+
+            modelBuilder.Entity("ApiSDD.Data.Entities.Usuario", b =>
+                {
+                    b.Navigation("RefreshTokens");
+
+                    b.Navigation("TokensRecuperacion");
                 });
 #pragma warning restore 612, 618
         }

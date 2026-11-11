@@ -1,6 +1,6 @@
-# 43-endpoint-auth-restablecer-password — Endpoint de restablecimiento de contraseña (EP-AU-06)
+﻿# 43-endpoint-auth-restablecer-password — Endpoint de restablecimiento de contraseña (EP-AU-06)
 
-> Repositorio: BusTrack API · Endpoint: `POST /api/v1/auth/restablecer-password` · Código: EP-AU-06 · Estado: Propuesto · Fecha: 2026-11-05.
+> Repositorio: BusTrack API · Endpoint: `POST /api/v1/auth/restablecer-password` · Código: EP-AU-06 · Estado: Implementado · Fecha: 2026-11-05.
 
 ## 1. Objetivo
 
@@ -15,7 +15,7 @@ Completar el cambio de contraseña olvidada desde la Pantalla de Restablecimient
 | Código Tarea | `EP-AU-06` |
 | Autenticación | Público (con Token de recuperación) |
 | Consumidor | Flutter (Móvil) y Angular (Web) |
-| Estado | Propuesto |
+| Estado | Implementado |
 
 **Parámetros / entrada:**
 

@@ -1,6 +1,6 @@
 # Memoria técnica — BusTrack API
 
-> Registro vivo. No se borra historial. Última actualización: 2026-11-09.
+> Registro vivo. No se borra historial. Última actualización: 2026-11-11.
 
 ## 1. Estado real
 
@@ -15,15 +15,40 @@
 - CRUD SDDUsuario (nv-04) con paginación, RowVersion y Argon2id.
 - Login JWT HS256 (nv-05) con lockout en SDDSegBloqueo y AdminPolicy.
 - Logout con blacklist en IMemoryCache (nv-06).
-- Cinco suites de prueba; 163 casos declarados y 94 unitarios verificados en verde.
+- **EP-AU-01 (registro):** `POST /api/v1/auth/registro` — alta de usuario con hash BCrypt, rol 'Usuario' por defecto, par JWT + Refresh Token.
+- **EP-AU-02 (login unificado):** `POST /api/v1/auth/login` — compatible con formato legacy (`strNombreUsuario`/`strPWD`) y con el nuevo formato email/password; devuelve accessToken + refreshToken.
+- **EP-AU-03 (refresh):** `POST /api/v1/auth/refresh` — rotación segura del Refresh Token con revocación de token anterior.
+- **EP-AU-04 (logout):** `POST /api/v1/auth/logout` — revocación de sesión activa o de todos los tokens del usuario.
+- **EP-AU-05 (recuperar password):** `POST /api/v1/auth/recuperar-password` — generación de token de recuperación (SHA-256), almacenado en `tokens_recuperacion`.
+- **EP-AU-06 (restablecer password):** `POST /api/v1/auth/restablecer-password` — validación del token + reestablecimiento del hash de contraseña.
+- **EP-AU-07 (perfil me):** `GET /api/v1/usuarios/me` — retorna perfil del usuario autenticado.
+- **EP-AU-08 (editar perfil):** `PUT /api/v1/usuarios/me` — actualización de nombre y/o contraseña.
+- **EP-AU-09 (baja cuenta):** `DELETE /api/v1/usuarios/me` — baja lógica (activo = false) del propio usuario.
+- **EP-AU-10 (listado admin):** `GET /api/v1/usuarios` — colección paginada con filtros (solo Admin).
+- **EP-EM-01 (lista empresas):** `GET /api/v1/empresas` — listado paginado con filtros multicriterio (q, medioTransporteId, municipio, calificacionMin, ordenarPor).
+- **EP-EM-02 (autocompletar empresas):** `GET /api/v1/empresas/autocompletar` — hasta 10 sugerencias ultraligeras con índice de texto.
+- **EP-EM-03 (detalle empresa):** `GET /api/v1/empresas/{id}` — ficha completa con rutas, medios de transporte y destinos.
+- **EP-EM-04 (rutas de empresa):** `GET /api/v1/empresas/{id}/rutas` — rutas filtradas por medio de transporte, parada o día.
+- **EP-EM-05 (comparar empresas):** `GET /api/v1/empresas/comparar` — comparativa lado a lado de 2–4 empresas (placeholder documentado como deuda).
+- **EP-EM-06 (crear empresa):** `POST /api/v1/empresas` — alta de empresa (Admin/JWT).
+- **EP-EM-07 (editar empresa):** `PUT /api/v1/empresas/{id}` — actualización de empresa (Admin/JWT).
+- **EP-EM-08 (baja empresa):** `DELETE /api/v1/empresas/{id}` — baja lógica de empresa (Admin/JWT).
+- **EP-EM-09 (lista medios de transporte):** `GET /api/v1/medios-transporte` — catálogo completo con filtro activo.
+- **EP-EM-10 (crear medio de transporte):** `POST /api/v1/medios-transporte` — alta de medio (Admin/JWT).
+- **EP-EM-11 (editar medio de transporte):** `PUT /api/v1/medios-transporte/{id}` — actualización de medio (Admin/JWT).
+- **EP-EM-12 (baja medio de transporte):** `DELETE /api/v1/medios-transporte/{id}` — baja lógica de medio; impide eliminación si tiene rutas activas (Admin/JWT).
+- Seis suites de prueba; 112 unitarios verificados en verde (incluye 16 nuevos: `PasswordPolicyTests`).
 
 ## 3. Funcionalidades pendientes
 
-- Dominio de transporte: empresas, asociaciones, rutas, paradas, destinos, horarios, tarifas y calificaciones.
-- Migración de EF Core/SQL Server a Azure Cosmos DB for NoSQL.
-- Bootstrap del primer Admin y refresh token/2FA (nv-07 no existe).
+- Pruebas de integración para los nuevos 22 endpoints (EP-AU-01..10 y EP-EM-01..12).
+- Aplicar la migración EF Core `AddAuthAndTransportTables` (creada el 2026-11-11, ver historial) en base de datos SQL Server de producción/staging.
+- Dominio de transporte restante: rutas (CRUD admin), paradas, destinos, horarios, tarifas y calificaciones.
+- Bootstrap del primer Admin y 2FA/MFA (nv-07).
+- Eliminar o reconectar `EmpresaService` (MongoDB) ahora que `EmpresasController` usa `IEmpresaSqlService`; decisión pendiente.
+- Migración de EF Core/SQL Server a Azure Cosmos DB for NoSQL (objetivo arquitectónico).
 - Reglas Semgrep reales y gates CI efectivos.
-- Dockerfile, contratos OpenAPI versionados y despliegue Azure.
+- Deuda EP-EM-05 (comparar): placeholder sin datos reales de calificación calculada en tiempo real.
 
 ## 4. Arquitectura actual
 
@@ -85,3 +110,14 @@ Expone REST a Flutter y Angular; consume ML/GenAI por HTTP interno y es la fuent
   Estado: IMPLEMENTADO (pendiente de verificación en el primer run real de la CD).
   Riesgo: la recreación del contenedor borra el estado efímero del grupo (no hay datos persistentes en ACI); la IP/DNS público se conserva porque `az container export/create` mantiene los mismos recursos del grupo.
   Relación con otros repos: ninguna por ahora.
+- **2026-11-11:** análisis contra el Excel `BusTrack_Componentes_Backend_Movil_Azure.xlsx` (épicas EP-01 Auth/Usuarios y EP-02 Empresas/Medios) y corrección de fallos reales:
+  1. **Rutas rotas (crítico):** los 12 endpoints EP-EM-01..12 (`EmpresasController`, `MediosTransporteController`) devolvían 404: usaban rutas literales `api/v1/...` incompatibles con el `UrlSegmentApiVersionReader` del pipeline. Corregido a `[ApiVersion("1.0")]` + plantilla `api/v{version:apiVersion}/...` (mismo patrón que el resto). Evidencia: nueva suite `IntegrationTest/EpRoutingTests.cs` pasó de 12 fallos a 22/22 en verde.
+  2. **Migración faltante (crítico):** creada `AddAuthAndTransportTables` (7 tablas TB-AU-01..04 + TB-EM-01/02 + `rutas`, índices, FKs y seed de roles). Las 7 tablas nuevas no tenían migración y los endpoints EP-AU/EP-EM habrían fallado contra una BD migrada. El snapshot `AppDbContextModelSnapshot.cs` ahora refleja el modelo completo (antes solo las 2 tablas legacy).
+     Nota técnica: los IDs de migración de este repo NO llevan timestamp (patrón manual desde `AddInitialSDDUsuario`), lo que rompe `dotnet-ef migrations list/add`; la migración se generó con el tool (respaldando/restaurando las legacy) y se recortó su `Up()/Down()` a las tablas nuevas. Verificado con script idempotente (`dotnet ef migrations script --idempotent`).
+  3. **Robustez EP-AU:** `AuthService.RegistroAsync` valida nombre/correo/formato (null → 400, antes NRE → 500); `UsuarioPerfilService.UpdateMeAsync` valida fuerza de contraseña (letras+números) y formato de correo; `DeleteMeAsync` ahora anonimiza (nombre, correo `anon-{id}@baja.bustrack.local`, hash aleatorio, consentimiento off) y elimina tokens de recuperación pendientes, según spec EP-AU-09. Política compartida extraída a `Security/PasswordPolicy.cs` (`EnsureStrongPassword`, `IsValidEmail`).
+  4. **Robustez EP-EM:** `EmpresaSqlService` Create/Update devuelven `EmpresaResponseDto` (antes exponían la entidad EF completa), invalidación de caché por versión en escrituras admin (spec EP-EM-06/07), `CompararAsync` filtra empresas por trayecto (parada origen/destino/destino turístico) y limita a 4 empresas; null guards en Updates.
+  Archivos afectados: `API_SDD/Controllers/V1/{EmpresasController,MediosTransporteController}.cs`, `API_SDD/Data/Migrations/*`, `API_SDD/Security/PasswordPolicy.cs`, `API_SDD/Services/{AuthService,UsuarioPerfilService}.cs`, `API_SDD/Services/Empresa/{EmpresaSqlService,IEmpresaSqlService}.cs`, `API_SDD/Services/MedioTransporte/MedioTransporteService.cs`, `API_SDD/Dtos/Empresa/EmpresaAdminDtos.cs`, `IntegrationTest/EpRoutingTests.cs`, `UnitTest/Auth/PasswordPolicyTests.cs`.
+  Estado: Implementado. Validación local: `dotnet build API_SDD.slnx -c Release` (0 errores/0 advertencias), UnitTest 112/112, IntegrationTest 27/27 (Routing 5 + EpRouting 22; el resto requiere Docker), SecurityTest 7/7 (Headers+Integrity), ContractTest 2/2 (Ping).
+  Decisiones del equipo (2026-11-11): (a) conservar `EmpresaService`/`MongoDbContext` (MongoDB) aunque sigue desconectado de los controladores — deuda y decisión pendiente; (b) las pruebas de integración de los 22 endpoints EP-AU/EP-EM quedan pendientes (requieren Docker, solo verificables en CI).
+  Riesgo: la migración existe pero NO está aplicada a ninguna BD real; BE-35 (envío de correo de recuperación) no existe — el token se genera y persiste pero no se envía; el lockout de BD sigue siendo solo del login legacy (login V2 cubierto por rate limiting HTTP, conforme a la spec EP-AU-02).
+  Relación con otros repos: ninguna por ahora (Flutter/Angular aún no consumen estos endpoints).

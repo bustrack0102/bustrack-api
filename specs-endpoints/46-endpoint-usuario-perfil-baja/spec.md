@@ -1,6 +1,6 @@
-# 46-endpoint-usuario-perfil-baja — Endpoint de baja de cuenta de usuario autenticado (EP-AU-09)
+﻿# 46-endpoint-usuario-perfil-baja — Endpoint de baja de cuenta de usuario autenticado (EP-AU-09)
 
-> Repositorio: BusTrack API · Endpoint: `DELETE /api/v1/usuarios/me` · Código: EP-AU-09 · Estado: Propuesto · Fecha: 2026-11-05.
+> Repositorio: BusTrack API · Endpoint: `DELETE /api/v1/usuarios/me` · Código: EP-AU-09 · Estado: Implementado · Fecha: 2026-11-05.
 
 ## 1. Objetivo
 
@@ -15,7 +15,7 @@ Ejecutar la baja definitiva y revocación de la cuenta del usuario autenticado d
 | Código Tarea | `EP-AU-09` |
 | Autenticación | Usuario (JWT requerido) |
 | Consumidor | Flutter (Móvil) y Angular (Web) |
-| Estado | Propuesto |
+| Estado | Implementado |
 
 **Parámetros / entrada:**
 

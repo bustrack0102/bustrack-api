@@ -1,6 +1,6 @@
-# 30-endpoint-medios-transporte — Endpoint de medios y modalidades de transporte
+﻿# 30-endpoint-medios-transporte — Endpoint de medios y modalidades de transporte
 
-> Repositorio: BusTrack API · Endpoint: `GET /api/v1/medios-transporte` · Estado: Propuesto · Fecha: 2026-11-05.
+> Repositorio: BusTrack API · Endpoint: `GET /api/v1/medios-transporte` · Estado: Implementado · Fecha: 2026-11-05.
 
 ## 1. Objetivo
 
@@ -14,7 +14,7 @@ Consultar el catálogo de tipos y medios de transporte público soportados por e
 | Ruta | `/api/v1/medios-transporte` |
 | Autenticación | Opcional / Pública |
 | Consumidor | Flutter y Angular |
-| Estado | Propuesto |
+| Estado | Implementado |
 
 **Parámetros / entrada:**
 

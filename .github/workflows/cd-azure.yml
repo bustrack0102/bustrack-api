@@ -80,11 +80,15 @@ jobs:
 
       - name: Build and push image to ACR
         run: |
+          echo "Iniciando sesión en ACR con Docker..."
+          echo "$ACR_PASSWORD" | docker login "$ACR_LOGIN_SERVER" --username "$ACR_USERNAME" --password-stdin
           TAG="${ACR_LOGIN_SERVER%/}/bustrack-api:${GITHUB_SHA::12}"
-          az acr build --registry bustrackacr0102 \
-            --image bustrack-api:${GITHUB_SHA::12} \
-            --image bustrack-api:latest \
-            --file Dockerfile .
+          TAG_LATEST="${ACR_LOGIN_SERVER%/}/bustrack-api:latest"
+          echo "Construyendo imagen Docker en runner de GitHub Actions..."
+          docker build -t "$TAG" -t "$TAG_LATEST" -f Dockerfile .
+          echo "Subiendo imagen a ACR..."
+          docker push "$TAG"
+          docker push "$TAG_LATEST"
           echo "IMAGE_TAG=$TAG" >> $GITHUB_ENV
 
       - name: Export current container group configuration
@@ -97,6 +101,7 @@ jobs:
 
       - name: Prepare deployment YAML (new image + ACR credentials)
         run: |
+          python3 -m pip install --quiet pyyaml
           python3 - <<'EOF'
           import os, yaml
           with open('group-original.yml') as f:

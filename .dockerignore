@@ -1,0 +1,12 @@
+**/bin/
+**/obj/
+**/.git/
+**/.github/
+**/TestResults/
+**/specs/
+**/specs-endpoints/
+**/docs/
+remote_repo/
+*.md
+**/*.user
+**/.vs/

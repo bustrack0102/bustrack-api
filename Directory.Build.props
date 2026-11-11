@@ -16,4 +16,11 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
   </ItemGroup>
+
+  <!-- Pins de seguridad: fuerza versiones parcheadas de transitivas (NU1902/NU1903). -->
+  <ItemGroup>
+    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.15" />
+    <PackageReference Include="SharpCompress" Version="0.48.0" />
+    <PackageReference Include="Snappier" Version="1.3.1" />
+  </ItemGroup>
 </Project>

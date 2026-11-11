@@ -56,19 +56,73 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
-      - name: Build and verify API_SDD Release
-        run: |
-          dotnet publish API_SDD/API_SDD.csproj -c Release -p:NuGetAudit=false
-
       - name: Azure Login
         uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Restart Azure Container Instance
+      - name: Ensure Azure Container Registry exists
         run: |
-          echo "Reiniciando contenedor bustrack-api en Azure (rg-bustrack-ncus)..."
-          az container restart --resource-group rg-bustrack-ncus --name bustrack-api
+          ACR_NAME=bustrackacr0102
+          if ! az acr show --name "$ACR_NAME" -o none 2>/dev/null; then
+            echo "Creando ACR $ACR_NAME..."
+            az acr create --name "$ACR_NAME" \
+              --resource-group rg-bustrack-ncus \
+              --sku Basic --admin-enabled true
+          else
+            echo "ACR $ACR_NAME ya existe."
+            az acr update --name "$ACR_NAME" --admin-enabled true
+          fi
+          # Credenciales admin (efímeras en este job, nunca se escriben al repo)
+          echo "ACR_LOGIN_SERVER=$(az acr show -n $ACR_NAME --query loginServer -o tsv)" >> $GITHUB_ENV
+          echo "ACR_USERNAME=$(az acr credential show -n $ACR_NAME --query username -o tsv)" >> $GITHUB_ENV
+          echo "ACR_PASSWORD=$(az acr credential show -n $ACR_NAME --query passwords[0].value -o tsv)" >> $GITHUB_ENV
+
+      - name: Build and push image to ACR
+        run: |
+          TAG="${ACR_LOGIN_SERVER%/}/bustrack-api:${GITHUB_SHA::12}"
+          az acr build --registry bustrackacr0102 \
+            --image bustrack-api:${GITHUB_SHA::12} \
+            --image bustrack-api:latest \
+            --file Dockerfile .
+          echo "IMAGE_TAG=$TAG" >> $GITHUB_ENV
+
+      - name: Export current container group configuration
+        run: |
+          az container export \
+            --resource-group rg-bustrack-ncus \
+            --name bustrack-api \
+            --file group-original.yml
+          cat group-original.yml
+
+      - name: Prepare deployment YAML (new image + ACR credentials)
+        run: |
+          python3 - <<'EOF'
+          import os, yaml
+          with open('group-original.yml') as f:
+              doc = yaml.safe_load(f)
+          cg = doc['apiVersion'] and doc
+          container = cg['containers'][0]
+          container['image'] = os.environ['IMAGE_TAG']
+          container['ports'] = [{'port': 8000, 'protocol': 'TCP'}]
+          cg['imageRegistryCredentials'] = [{
+              'server': os.environ['ACR_LOGIN_SERVER'],
+              'username': os.environ['ACR_USERNAME'],
+              'password': os.environ['ACR_PASSWORD'],
+          }]
+          with open('group-deploy.yml', 'w') as f:
+              yaml.safe_dump(doc, f, sort_keys=False, default_flow_style=False)
+          print(open('group-deploy.yml').read())
+          EOF
+
+      - name: Replace Azure Container Instance with new image
+        run: |
+          az container delete \
+            --resource-group rg-bustrack-ncus \
+            --name bustrack-api --yes
+          az container create \
+            --resource-group rg-bustrack-ncus \
+            --file group-deploy.yml
 
       - name: Smoke Test & Health Check Probe
         run: |

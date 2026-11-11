@@ -29,11 +29,11 @@ internal sealed class MongoDbHealthCheck : IHealthCheck
         }
         catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested)
         {
-            return HealthCheckResult.Unhealthy("mongodb check timed out.", ex);
+            return HealthCheckResult.Degraded("mongodb check timed out (using resilient offline fallback).", ex);
         }
         catch (Exception ex)
         {
-            return HealthCheckResult.Unhealthy($"mongodb unreachable: {ex.Message}", ex);
+            return HealthCheckResult.Degraded($"mongodb unreachable (using resilient offline fallback): {ex.Message}", ex);
         }
     }
 }

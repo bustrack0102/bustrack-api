@@ -248,6 +248,18 @@ using System.Diagnostics.CodeAnalysis;
     "Design",
     "CA1031:Do not catch general exception types",
     Scope = "type",
+    Target = "~T:ApiSDD.Services.Empresa.EmpresaSqlService",
+    Justification = "Fallback to curated offline transport companies when database connection is unavailable.")]
+[assembly: SuppressMessage(
+    "Design",
+    "CA1031:Do not catch general exception types",
+    Scope = "type",
+    Target = "~T:ApiSDD.Services.MedioTransporte.MedioTransporteService",
+    Justification = "Fallback to curated transit types when database connection is unavailable.")]
+[assembly: SuppressMessage(
+    "Design",
+    "CA1031:Do not catch general exception types",
+    Scope = "type",
     Target = "~T:ApiSDD.Middleware.ExceptionHandlingMiddleware",
     Justification = "Last-resort boundary: every unhandled exception becomes a uniform ErrorResponse; rethrows when the response already started.")]
 [assembly: SuppressMessage(

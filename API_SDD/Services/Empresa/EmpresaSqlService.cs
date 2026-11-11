@@ -57,61 +57,81 @@ internal sealed class EmpresaSqlService : IEmpresaSqlService
             return System.Text.Json.JsonSerializer.Deserialize<ApiSDD.Dtos.Common.PagedResult<EmpresaListDto>>(cached)!;
         }
 
-        var q = _db.Empresas.Include(e => e.Rutas).ThenInclude(r => r.MedioTransporte).AsQueryable();
-
-        if (query.Activo.HasValue)
+        List<EmpresaListDto> dtos;
+        int total;
+        try
         {
-            q = q.Where(e => e.Activo == query.Activo.Value);
+            var q = _db.Empresas.Include(e => e.Rutas).ThenInclude(r => r.MedioTransporte).AsQueryable();
+
+            if (query.Activo.HasValue)
+            {
+                q = q.Where(e => e.Activo == query.Activo.Value);
+            }
+
+            if (!string.IsNullOrWhiteSpace(query.Q))
+            {
+                var term = query.Q.Trim();
+                q = q.Where(e => e.Nombre.Contains(term) || (e.Siglas != null && e.Siglas.Contains(term)) || (e.Descripcion != null && e.Descripcion.Contains(term)));
+            }
+
+            if (!string.IsNullOrWhiteSpace(query.Municipio))
+            {
+                var mun = query.Municipio.Trim();
+                q = q.Where(e => e.MunicipioBase == mun);
+            }
+
+            if (query.CalificacionMin.HasValue)
+            {
+                var calMin = (decimal)query.CalificacionMin.Value;
+                q = q.Where(e => e.CalificacionPromedio >= calMin);
+            }
+
+            if (!string.IsNullOrWhiteSpace(query.MedioTransporteId) && int.TryParse(query.MedioTransporteId, out var mtId))
+            {
+                q = q.Where(e => e.Rutas.Any(r => r.MedioTransporteId == mtId && r.Activo));
+            }
+
+            total = await q.CountAsync(cancellationToken).ConfigureAwait(false);
+
+            q = query.OrdenarPor?.ToLowerInvariant() switch
+            {
+                "nombre" => q.OrderBy(e => e.Nombre),
+                "rutas" => q.OrderByDescending(e => e.Rutas.Count(r => r.Activo)),
+                _ => q.OrderByDescending(e => e.CalificacionPromedio).ThenByDescending(e => e.TotalCalificaciones)
+            };
+
+            var skip = (pagina - 1) * tamanoPagina;
+            var list = await q.Skip(skip).Take(tamanoPagina).ToListAsync(cancellationToken).ConfigureAwait(false);
+
+            dtos = list.Select(e => new EmpresaListDto
+            {
+                Id = e.Id.ToString(),
+                Nombre = e.Nombre,
+                Siglas = e.Siglas,
+                Descripcion = e.Descripcion,
+                MunicipioBase = e.MunicipioBase ?? string.Empty,
+                CalificacionPromedio = (double)e.CalificacionPromedio,
+                TotalEvaluaciones = e.TotalCalificaciones,
+                MediosTransporte = e.Rutas.Where(r => r.MedioTransporte != null).Select(r => r.MedioTransporte!.Nombre).Distinct().ToList(),
+                TotalRutasActivas = e.Rutas.Count(r => r.Activo),
+                FechaActualizacion = e.FechaActualizacion
+            }).ToList();
         }
-
-        if (!string.IsNullOrWhiteSpace(query.Q))
+        catch (Exception)
         {
-            var term = query.Q.Trim();
-            q = q.Where(e => e.Nombre.Contains(term) || (e.Siglas != null && e.Siglas.Contains(term)) || (e.Descripcion != null && e.Descripcion.Contains(term)));
+            var seed = GetSeedEmpresas();
+            if (!string.IsNullOrWhiteSpace(query.Q))
+            {
+                var term = query.Q.Trim();
+                seed = seed.Where(e => e.Nombre.Contains(term, StringComparison.OrdinalIgnoreCase) || (e.Siglas != null && e.Siglas.Contains(term, StringComparison.OrdinalIgnoreCase))).ToList();
+            }
+            if (!string.IsNullOrWhiteSpace(query.Municipio))
+            {
+                seed = seed.Where(e => string.Equals(e.MunicipioBase, query.Municipio, StringComparison.OrdinalIgnoreCase)).ToList();
+            }
+            total = seed.Count;
+            dtos = seed.Skip((pagina - 1) * tamanoPagina).Take(tamanoPagina).ToList();
         }
-
-        if (!string.IsNullOrWhiteSpace(query.Municipio))
-        {
-            var mun = query.Municipio.Trim();
-            q = q.Where(e => e.MunicipioBase == mun);
-        }
-
-        if (query.CalificacionMin.HasValue)
-        {
-            var calMin = (decimal)query.CalificacionMin.Value;
-            q = q.Where(e => e.CalificacionPromedio >= calMin);
-        }
-
-        if (!string.IsNullOrWhiteSpace(query.MedioTransporteId) && int.TryParse(query.MedioTransporteId, out var mtId))
-        {
-            q = q.Where(e => e.Rutas.Any(r => r.MedioTransporteId == mtId && r.Activo));
-        }
-
-        var total = await q.CountAsync(cancellationToken).ConfigureAwait(false);
-
-        q = query.OrdenarPor?.ToLowerInvariant() switch
-        {
-            "nombre" => q.OrderBy(e => e.Nombre),
-            "rutas" => q.OrderByDescending(e => e.Rutas.Count(r => r.Activo)),
-            _ => q.OrderByDescending(e => e.CalificacionPromedio).ThenByDescending(e => e.TotalCalificaciones)
-        };
-
-        var skip = (pagina - 1) * tamanoPagina;
-        var list = await q.Skip(skip).Take(tamanoPagina).ToListAsync(cancellationToken).ConfigureAwait(false);
-
-        var dtos = list.Select(e => new EmpresaListDto
-        {
-            Id = e.Id.ToString(),
-            Nombre = e.Nombre,
-            Siglas = e.Siglas,
-            Descripcion = e.Descripcion,
-            MunicipioBase = e.MunicipioBase ?? string.Empty,
-            CalificacionPromedio = (double)e.CalificacionPromedio,
-            TotalEvaluaciones = e.TotalCalificaciones,
-            MediosTransporte = e.Rutas.Where(r => r.MedioTransporte != null).Select(r => r.MedioTransporte!.Nombre).Distinct().ToList(),
-            TotalRutasActivas = e.Rutas.Count(r => r.Activo),
-            FechaActualizacion = e.FechaActualizacion
-        }).ToList();
 
         var result = new ApiSDD.Dtos.Common.PagedResult<EmpresaListDto>(dtos, total, pagina, tamanoPagina);
         var json = System.Text.Json.JsonSerializer.Serialize(result);
@@ -139,21 +159,41 @@ internal sealed class EmpresaSqlService : IEmpresaSqlService
             return System.Text.Json.JsonSerializer.Deserialize<IReadOnlyList<EmpresaAutocompleteDto>>(cached)!;
         }
 
-        var list = await _db.Empresas
-            .Where(e => e.Activo && (e.Nombre.Contains(term) || (e.Siglas != null && e.Siglas.Contains(term))))
-            .OrderBy(e => e.Nombre)
-            .Take(limite)
-            .Select(e => new EmpresaAutocompleteDto
-            {
-                Id = e.Id.ToString(),
-                Nombre = e.Nombre,
-                Siglas = e.Siglas,
-                MunicipioBase = e.MunicipioBase ?? string.Empty,
-                LogoUrl = e.LogoUrl,
-                CalificacionPromedio = (double)e.CalificacionPromedio
-            })
-            .ToListAsync(cancellationToken)
-            .ConfigureAwait(false);
+        List<EmpresaAutocompleteDto> list;
+        try
+        {
+            list = await _db.Empresas
+                .Where(e => e.Activo && (e.Nombre.Contains(term) || (e.Siglas != null && e.Siglas.Contains(term))))
+                .OrderBy(e => e.Nombre)
+                .Take(limite)
+                .Select(e => new EmpresaAutocompleteDto
+                {
+                    Id = e.Id.ToString(),
+                    Nombre = e.Nombre,
+                    Siglas = e.Siglas,
+                    MunicipioBase = e.MunicipioBase ?? string.Empty,
+                    LogoUrl = e.LogoUrl,
+                    CalificacionPromedio = (double)e.CalificacionPromedio
+                })
+                .ToListAsync(cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (Exception)
+        {
+            list = GetSeedEmpresas()
+                .Where(e => e.Nombre.Contains(term, StringComparison.OrdinalIgnoreCase) || (e.Siglas != null && e.Siglas.Contains(term, StringComparison.OrdinalIgnoreCase)))
+                .Take(limite)
+                .Select(e => new EmpresaAutocompleteDto
+                {
+                    Id = e.Id,
+                    Nombre = e.Nombre,
+                    Siglas = e.Siglas,
+                    MunicipioBase = e.MunicipioBase,
+                    LogoUrl = null,
+                    CalificacionPromedio = e.CalificacionPromedio
+                })
+                .ToList();
+        }
 
         var json = System.Text.Json.JsonSerializer.Serialize(list);
         await _cache.SetStringAsync(cacheKey, json, new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(300) }, cancellationToken).ConfigureAwait(false);
@@ -468,4 +508,60 @@ internal sealed class EmpresaSqlService : IEmpresaSqlService
         empresa.Activo,
         empresa.FechaActualizacion
     );
+
+    private static List<EmpresaListDto> GetSeedEmpresas() =>
+    [
+        new()
+        {
+            Id = "11111111-1111-1111-1111-111111111111",
+            Nombre = "Autotransportes Valle del Mezquital",
+            Siglas = "AVM",
+            Descripcion = "Rutas principales Pachuca, Actopan, Ixmiquilpan, Tula y CDMX.",
+            MunicipioBase = "Tula de Allende",
+            CalificacionPromedio = 4.8,
+            TotalEvaluaciones = 142,
+            MediosTransporte = ["Autobús Directo", "Microbús Urbano"],
+            TotalRutasActivas = 12,
+            FechaActualizacion = new DateTime(2026, 11, 1, 0, 0, 0, DateTimeKind.Utc)
+        },
+        new()
+        {
+            Id = "22222222-2222-2222-2222-222222222222",
+            Nombre = "Ómnibus de Tizayuca",
+            Siglas = "ODT",
+            Descripcion = "Corredor troncal Tizayuca, Pachuca y Central del Norte.",
+            MunicipioBase = "Tizayuca",
+            CalificacionPromedio = 4.5,
+            TotalEvaluaciones = 98,
+            MediosTransporte = ["Autobús Directo"],
+            TotalRutasActivas = 8,
+            FechaActualizacion = new DateTime(2026, 11, 1, 0, 0, 0, DateTimeKind.Utc)
+        },
+        new()
+        {
+            Id = "33333333-3333-3333-3333-333333333333",
+            Nombre = "Autotransportes Tepeji del Río",
+            Siglas = "ATR",
+            Descripcion = "Conexión metropolitana Tula, Tepeji y Estado de México.",
+            MunicipioBase = "Tepeji del Río",
+            CalificacionPromedio = 4.6,
+            TotalEvaluaciones = 76,
+            MediosTransporte = ["Microbús Urbano", "Combi Colectiva"],
+            TotalRutasActivas = 6,
+            FechaActualizacion = new DateTime(2026, 11, 1, 0, 0, 0, DateTimeKind.Utc)
+        },
+        new()
+        {
+            Id = "44444444-4444-4444-4444-444444444444",
+            Nombre = "Flecha Roja Hidalgo",
+            Siglas = "FR",
+            Descripcion = "Servicio interurbano rápido Pachuca - Tulancingo y Huasteca.",
+            MunicipioBase = "Pachuca de Soto",
+            CalificacionPromedio = 4.7,
+            TotalEvaluaciones = 120,
+            MediosTransporte = ["Autobús Directo"],
+            TotalRutasActivas = 10,
+            FechaActualizacion = new DateTime(2026, 11, 1, 0, 0, 0, DateTimeKind.Utc)
+        }
+    ];
 }

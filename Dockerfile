@@ -2,7 +2,7 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
-COPY NuGet.config ./
+COPY nuget.config ./
 COPY Directory.Build.props ./
 COPY API_SDD.slnx ./
 COPY API_SDD/API_SDD.csproj API_SDD/

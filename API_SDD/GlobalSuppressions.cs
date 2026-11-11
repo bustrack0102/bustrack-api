@@ -242,6 +242,12 @@ using System.Diagnostics.CodeAnalysis;
     "Design",
     "CA1031:Do not catch general exception types",
     Scope = "type",
+    Target = "~T:ApiSDD.Health.MongoDbHealthCheck",
+    Justification = "A health check must translate any failure into Unhealthy (fail-fast reporting); no exception escapes.")]
+[assembly: SuppressMessage(
+    "Design",
+    "CA1031:Do not catch general exception types",
+    Scope = "type",
     Target = "~T:ApiSDD.Middleware.ExceptionHandlingMiddleware",
     Justification = "Last-resort boundary: every unhandled exception becomes a uniform ErrorResponse; rethrows when the response already started.")]
 [assembly: SuppressMessage(

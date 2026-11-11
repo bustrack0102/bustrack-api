@@ -25,15 +25,15 @@ internal sealed class SqlServerHealthCheck : IHealthCheck
             var reachable = await _db.Database.CanConnectAsync(timeout.Token).ConfigureAwait(false);
             return reachable
                 ? HealthCheckResult.Healthy("sql reachable.")
-                : HealthCheckResult.Unhealthy("sql unreachable.");
+                : HealthCheckResult.Degraded("sql unreachable (using NoSQL MongoDB primary).");
         }
         catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested)
         {
-            return HealthCheckResult.Unhealthy("sql check timed out.", ex);
+            return HealthCheckResult.Degraded("sql check timed out (using NoSQL MongoDB primary).", ex);
         }
         catch (Exception ex)
         {
-            return HealthCheckResult.Unhealthy("sql unreachable.", ex);
+            return HealthCheckResult.Degraded("sql unreachable (using NoSQL MongoDB primary).", ex);
         }
     }
 }

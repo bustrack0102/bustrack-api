@@ -25,9 +25,11 @@ public sealed class MongoDbContext
         using var client = new MongoClient(connectionString);
         var dbName = MongoUrl.Create(connectionString).DatabaseName
                      ?? configuration["MongoDb:Database"]
-                     ?? "BustrackDb";
+                     ?? "BusTrackNoSQL";
         _database = client.GetDatabase(dbName);
     }
+
+    public IMongoDatabase Database => _database;
 
     // ---------------------------------------------------------------------
     // Colecciones usadas por los endpoints de Empresas.

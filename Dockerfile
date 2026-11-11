@@ -20,6 +20,7 @@ RUN dotnet publish API_SDD/API_SDD.csproj -c Release -o /app/publish --no-restor
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
 WORKDIR /app
+RUN mkdir -p /app/keys
 COPY --from=build /app/publish ./
 ENV PORT=8000 ASPNETCORE_ENVIRONMENT=Production
 EXPOSE 8000

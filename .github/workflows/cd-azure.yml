@@ -106,7 +106,7 @@ jobs:
             --os-type Linux \
             --cpu 1 \
             --memory 1.5 \
-            --environment-variables PORT=8000 ASPNETCORE_ENVIRONMENT=Production
+            --environment-variables PORT=8000 ASPNETCORE_ENVIRONMENT=Production DataProtection__KeysPath=/app/keys EnableHttpsRedirection=false
 
       - name: Smoke Test & Health Check Probe
         run: |
@@ -130,12 +130,18 @@ jobs:
 
           if [ "$HEALTHY" -ne 1 ]; then
             echo "❌ Error: La API no respondió 200 OK tras $((MAX_RETRIES * DELAY)) segundos."
+            echo "=== LOGS DEL CONTENEDOR ==="
+            az container logs --resource-group rg-bustrack-ncus --name bustrack-api || true
             exit 1
           fi
 
           echo "Probando endpoint de ping..."
           PING_BODY=$(curl -s --max-time 10 "$API_URL/api/v1/ping" || echo "")
           echo "Respuesta de Ping: $PING_BODY"
+
+          echo "Probando endpoint /health/ready..."
+          READY_BODY=$(curl -s --max-time 10 "$API_URL/health/ready" || echo "")
+          echo "Respuesta de Ready: $READY_BODY"
 
       - name: Generate Deployment Summary
         if: always()

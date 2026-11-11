@@ -63,7 +63,7 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
-if (app.Environment.IsProduction())
+if (app.Environment.IsProduction() && builder.Configuration.GetValue("EnableHttpsRedirection", false))
 {
     // Testing/Staging omiten redirección (TestServer es HTTP; ver Memoria.md).
     app.UseHttpsRedirection();

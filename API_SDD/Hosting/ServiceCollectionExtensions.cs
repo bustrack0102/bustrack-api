@@ -118,6 +118,7 @@ internal static class ServiceCollectionExtensions
         }
 
         services.AddHealthChecks()
+            .AddCheck<MongoDbHealthCheck>("mongodb")
             .AddCheck<SqlServerHealthCheck>("sql")
             .AddCheck<AssemblyIntegrityCheck>("assembly");
 

@@ -106,11 +106,12 @@ jobs:
           import os, yaml
           with open('group-original.yml') as f:
               doc = yaml.safe_load(f)
-          cg = doc['apiVersion'] and doc
-          container = cg['containers'][0]
-          container['image'] = os.environ['IMAGE_TAG']
-          container['ports'] = [{'port': 8000, 'protocol': 'TCP'}]
-          cg['imageRegistryCredentials'] = [{
+          props = doc.get('properties', doc)
+          container = props['containers'][0]
+          container_props = container.get('properties', container)
+          container_props['image'] = os.environ['IMAGE_TAG']
+          container_props.pop('command', None)
+          props['imageRegistryCredentials'] = [{
               'server': os.environ['ACR_LOGIN_SERVER'],
               'username': os.environ['ACR_USERNAME'],
               'password': os.environ['ACR_PASSWORD'],

@@ -1,3 +1,4 @@
+using ApiSDD.Dtos.Operational;
 using ApiSDD.Services.NoSql;
 using Asp.Versioning;
 using Microsoft.AspNetCore.Authorization;
@@ -151,5 +152,40 @@ public sealed class RutasController : ControllerBase
 
         var items = await _catalog.ListTarifasAsync(id, true, cancellationToken).ConfigureAwait(false);
         return Ok(items);
+    }
+
+    // POST /api/v1/rutas (EP-RP-14)
+    [HttpPost]
+    [Authorize(Policy = "AdminPolicy")]
+    [EnableRateLimiting("ConcurrentWrites")]
+    public async Task<IActionResult> Create(
+        [FromBody] RutaUpsertRequest request,
+        CancellationToken cancellationToken)
+    {
+        var created = await _catalog.CreateRutaAsync(request, cancellationToken).ConfigureAwait(false);
+        return Created(new Uri($"/api/v1/rutas/{created.Id}", UriKind.Relative), created);
+    }
+
+    // PUT /api/v1/rutas/{id} (EP-RP-15)
+    [HttpPut("{id:guid}")]
+    [Authorize(Policy = "AdminPolicy")]
+    [EnableRateLimiting("ConcurrentWrites")]
+    public async Task<IActionResult> Update(
+        [FromRoute] Guid id,
+        [FromBody] RutaUpsertRequest request,
+        CancellationToken cancellationToken)
+    {
+        var updated = await _catalog.UpdateRutaAsync(id, request, cancellationToken).ConfigureAwait(false);
+        return Ok(updated);
+    }
+
+    // DELETE /api/v1/rutas/{id} (EP-RP-16)
+    [HttpDelete("{id:guid}")]
+    [Authorize(Policy = "AdminPolicy")]
+    [EnableRateLimiting("ConcurrentWrites")]
+    public async Task<IActionResult> Delete([FromRoute] Guid id, CancellationToken cancellationToken)
+    {
+        await _catalog.DeactivateRutaAsync(id, cancellationToken).ConfigureAwait(false);
+        return NoContent();
     }
 }

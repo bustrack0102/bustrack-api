@@ -421,6 +421,9 @@ public sealed class CalificacionDoc
     [BsonElement("empresaId")]
     public Guid? EmpresaId { get; set; }
 
+    [BsonElement("destinoId")]
+    public string? DestinoId { get; set; }
+
     [BsonElement("puntuacion")]
     public int Puntuacion { get; set; }
 

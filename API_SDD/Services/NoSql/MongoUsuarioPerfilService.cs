@@ -24,7 +24,7 @@ internal sealed class MongoUsuarioPerfilService : IUsuarioPerfilService
     {
         var user = await GetAuthenticatedUserAsync(principal, cancellationToken).ConfigureAwait(false);
         var viajes = await _store.ListViajesUsuarioAsync(user.Id, cancellationToken).ConfigureAwait(false);
-        var calificaciones = await _store.ListCalificacionesAsync(null, null, user.Id, cancellationToken).ConfigureAwait(false);
+        var calificaciones = await _store.ListCalificacionesAsync(null, null, null, user.Id, cancellationToken).ConfigureAwait(false);
         var consentimiento = await _store.GetConsentimientoAsync(user.Id, cancellationToken).ConfigureAwait(false);
 
         return new UsuarioMeResponseDto(

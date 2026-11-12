@@ -1,3 +1,4 @@
+using ApiSDD.Dtos.Operational;
 using ApiSDD.Services.NoSql;
 using Asp.Versioning;
 using Microsoft.AspNetCore.Authorization;
@@ -55,5 +56,40 @@ public sealed class HorariosController : ControllerBase
         }
 
         return Ok(result);
+    }
+
+    // POST /api/v1/horarios (EP-HT-03)
+    [HttpPost]
+    [Authorize(Policy = "AdminPolicy")]
+    [EnableRateLimiting("ConcurrentWrites")]
+    public async Task<IActionResult> Create(
+        [FromBody] HorarioUpsertRequest request,
+        CancellationToken cancellationToken)
+    {
+        var created = await _catalog.CreateHorarioAsync(request, cancellationToken).ConfigureAwait(false);
+        return Created(new Uri($"/api/v1/horarios/{created.Id}", UriKind.Relative), created);
+    }
+
+    // PUT /api/v1/horarios/{id} (EP-HT-04)
+    [HttpPut("{id}")]
+    [Authorize(Policy = "AdminPolicy")]
+    [EnableRateLimiting("ConcurrentWrites")]
+    public async Task<IActionResult> Update(
+        [FromRoute] string id,
+        [FromBody] HorarioUpsertRequest request,
+        CancellationToken cancellationToken)
+    {
+        var updated = await _catalog.UpdateHorarioAsync(id, request, cancellationToken).ConfigureAwait(false);
+        return Ok(updated);
+    }
+
+    // DELETE /api/v1/horarios/{id} (EP-HT-05)
+    [HttpDelete("{id}")]
+    [Authorize(Policy = "AdminPolicy")]
+    [EnableRateLimiting("ConcurrentWrites")]
+    public async Task<IActionResult> Delete([FromRoute] string id, CancellationToken cancellationToken)
+    {
+        await _catalog.DeactivateHorarioAsync(id, cancellationToken).ConfigureAwait(false);
+        return NoContent();
     }
 }

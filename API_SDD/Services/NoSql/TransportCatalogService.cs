@@ -1,5 +1,7 @@
 using System.Globalization;
+using ApiSDD.Common;
 using ApiSDD.Data.NoSql;
+using ApiSDD.Dtos.Operational;
 using ApiSDD.Dtos.Transport;
 using Microsoft.Extensions.Caching.Distributed;
 
@@ -34,11 +36,31 @@ public interface ITransportCatalogService
     Task<DestinoTuristicoDto?> GetDestinoByIdAsync(string id, CancellationToken ct);
     Task<IReadOnlyList<RutaListItemDto>?> GetRutasDeDestinoAsync(string id, CancellationToken ct);
 
+    Task<ParadaDetallePublicoDto> CreateParadaAsync(ParadaUpsertRequest request, CancellationToken ct);
+    Task<ParadaDetallePublicoDto> UpdateParadaAsync(string id, ParadaUpsertRequest request, CancellationToken ct);
+    Task DeactivateParadaAsync(string id, CancellationToken ct);
+
+    Task<RutaListItemDto> CreateRutaAsync(RutaUpsertRequest request, CancellationToken ct);
+    Task<RutaListItemDto> UpdateRutaAsync(Guid id, RutaUpsertRequest request, CancellationToken ct);
+    Task DeactivateRutaAsync(Guid id, CancellationToken ct);
+
+    Task<HorarioItemDto> CreateHorarioAsync(HorarioUpsertRequest request, CancellationToken ct);
+    Task<HorarioItemDto> UpdateHorarioAsync(string id, HorarioUpsertRequest request, CancellationToken ct);
+    Task DeactivateHorarioAsync(string id, CancellationToken ct);
+
+    Task<TarifaItemDto> CreateTarifaAsync(TarifaUpsertRequest request, CancellationToken ct);
+    Task<TarifaItemDto> UpdateTarifaAsync(string id, TarifaUpsertRequest request, CancellationToken ct);
+    Task DeactivateTarifaAsync(string id, CancellationToken ct);
+
+    Task<DestinoTuristicoDto> CreateDestinoAsync(DestinoUpsertRequest request, CancellationToken ct);
+    Task<DestinoTuristicoDto> UpdateDestinoAsync(string id, DestinoUpsertRequest request, CancellationToken ct);
+    Task DeactivateDestinoAsync(string id, CancellationToken ct);
+
     Task<EstadoActualizacionCatalogosResponse> GetEstadoActualizacionAsync(CancellationToken ct);
     Task InvalidateCatalogCacheAsync(CancellationToken ct);
 }
 
-internal sealed class TransportCatalogService : ITransportCatalogService
+internal sealed partial class TransportCatalogService : ITransportCatalogService
 {
     private const string CachePrefix = "catalog:nosql:";
     private const string CacheVersionKey = CachePrefix + "version";

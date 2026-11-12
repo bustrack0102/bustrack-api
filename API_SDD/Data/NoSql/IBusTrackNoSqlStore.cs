@@ -60,7 +60,7 @@ public interface IBusTrackNoSqlStore
     Task UpsertDestinoAsync(DestinoDoc doc, CancellationToken ct);
 
     // --- Calificaciones y Viajes (EP-CA, EP-VG) ---
-    Task<IReadOnlyList<CalificacionDoc>> ListCalificacionesAsync(Guid? rutaId, Guid? empresaId, Guid? usuarioId, CancellationToken ct);
+    Task<IReadOnlyList<CalificacionDoc>> ListCalificacionesAsync(Guid? rutaId, Guid? empresaId, string? destinoId, Guid? usuarioId, CancellationToken ct);
     Task<CalificacionDoc?> GetCalificacionByIdAsync(string id, CancellationToken ct);
     Task UpsertCalificacionAsync(CalificacionDoc doc, CancellationToken ct);
     Task DeleteCalificacionAsync(string id, CancellationToken ct);
@@ -91,4 +91,5 @@ public interface IBusTrackNoSqlStore
     Task<IReadOnlyList<ImportacionDoc>> ListImportacionesAsync(Guid? fuenteId, CancellationToken ct);
     Task UpsertDispositivoFcmAsync(DispositivoFcmDoc doc, CancellationToken ct);
     Task<IReadOnlyList<DispositivoFcmDoc>> ListDispositivosUsuarioAsync(Guid usuarioId, CancellationToken ct);
+    Task<bool> DeleteDispositivoFcmAsync(string id, Guid usuarioId, CancellationToken ct);
 }

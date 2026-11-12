@@ -359,12 +359,13 @@ internal sealed class MongoBusTrackStore : IBusTrackNoSqlStore, IDisposable
         return Destinos.ReplaceOneAsync(d => d.Id == doc.Id, doc, new ReplaceOptions { IsUpsert = true }, ct);
     }
 
-    public async Task<IReadOnlyList<CalificacionDoc>> ListCalificacionesAsync(Guid? rutaId, Guid? empresaId, Guid? usuarioId, CancellationToken ct)
+    public async Task<IReadOnlyList<CalificacionDoc>> ListCalificacionesAsync(Guid? rutaId, Guid? empresaId, string? destinoId, Guid? usuarioId, CancellationToken ct)
     {
         var fb = Builders<CalificacionDoc>.Filter;
         var list = new List<FilterDefinition<CalificacionDoc>>();
         if (rutaId.HasValue) list.Add(fb.Eq(c => c.RutaId, rutaId.Value));
         if (empresaId.HasValue) list.Add(fb.Eq(c => c.EmpresaId, empresaId.Value));
+        if (!string.IsNullOrWhiteSpace(destinoId)) list.Add(fb.Eq(c => c.DestinoId, destinoId.Trim()));
         if (usuarioId.HasValue) list.Add(fb.Eq(c => c.UsuarioId, usuarioId.Value));
         var combined = list.Count == 0 ? fb.Empty : fb.And(list);
         return await Calificaciones.Find(combined).SortByDescending(c => c.FechaCreacion).ToListAsync(ct).ConfigureAwait(false);
@@ -466,4 +467,10 @@ internal sealed class MongoBusTrackStore : IBusTrackNoSqlStore, IDisposable
 
     public async Task<IReadOnlyList<DispositivoFcmDoc>> ListDispositivosUsuarioAsync(Guid usuarioId, CancellationToken ct) =>
         await Dispositivos.Find(d => d.UsuarioId == usuarioId).ToListAsync(ct).ConfigureAwait(false);
+
+    public async Task<bool> DeleteDispositivoFcmAsync(string id, Guid usuarioId, CancellationToken ct)
+    {
+        var res = await Dispositivos.DeleteOneAsync(d => d.Id == id && d.UsuarioId == usuarioId, ct).ConfigureAwait(false);
+        return res.DeletedCount > 0;
+    }
 }

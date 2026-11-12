@@ -64,6 +64,43 @@
 | GET | `/api/v1/catalogos/estado-actualizacion` | no | Global | 200/429 | 49-endpoint-catalogos-estado |
 | GET | `/api/v1/health` | no | Global | 200/503 | 49-endpoint-catalogos-estado |
 | POST | `/api/v1/moderacion` | no | Global | 200/400/429 | 47-endpoint-moderacion |
+| POST | `/api/v1/moderacion/archivo` | JWT | ConcurrentWrites | 200/400/401/422/429 | 47-endpoint-moderacion |
+| POST | `/api/v1/media/upload` | JWT | ConcurrentWrites | 201/400/401/422/429 | 51-endpoint-media-cdn |
+| GET | `/api/v1/dispositivos/mios` | JWT | Global | 200/401/429 | 52-endpoint-dispositivos-fcm |
+| POST | `/api/v1/dispositivos` | JWT | ConcurrentWrites | 201/400/401/422/429 | 52-endpoint-dispositivos-fcm |
+| DELETE | `/api/v1/dispositivos/{id}` | JWT | ConcurrentWrites | 204/401/404/429 | 52-endpoint-dispositivos-fcm |
+| GET | `/api/v1/calificaciones` | no | Global | 200/429 | 23-endpoint-calificaciones |
+| GET | `/api/v1/calificaciones/resumen` | no | Global | 200/429 | 23-endpoint-calificaciones |
+| GET | `/api/v1/calificaciones/mias` | JWT | Global | 200/401/429 | 23-endpoint-calificaciones |
+| POST | `/api/v1/calificaciones` | JWT | ConcurrentWrites | 201/400/401/404/409/422/429 | 23-endpoint-calificaciones |
+| PUT | `/api/v1/calificaciones/{id}` | JWT | ConcurrentWrites | 200/401/403/404/422/429 | 23-endpoint-calificaciones |
+| DELETE | `/api/v1/calificaciones/{id}` | JWT | ConcurrentWrites | 204/401/403/404/429 | 23-endpoint-calificaciones |
+| GET | `/api/v1/viajes` | JWT | Global | 200/401/429 | 50-endpoint-viajes |
+| GET | `/api/v1/viajes/{id}` | JWT | Global | 200/401/403/404/429 | 50-endpoint-viajes |
+| POST | `/api/v1/viajes` | JWT | ConcurrentWrites | 201/400/401/404/422/429 | 50-endpoint-viajes |
+| PUT | `/api/v1/viajes/{id}` | JWT | ConcurrentWrites | 200/401/403/404/422/429 | 50-endpoint-viajes |
+| DELETE | `/api/v1/viajes/{id}` | JWT | ConcurrentWrites | 204/401/403/404/429 | 50-endpoint-viajes |
+| POST | `/api/v1/paradas` | JWT AdminPolicy | ConcurrentWrites | 201/401/403/409/422/429 | 39-endpoint-admin-rutas |
+| PUT | `/api/v1/paradas/{id}` | JWT AdminPolicy | ConcurrentWrites | 200/401/403/404/422/429 | 39-endpoint-admin-rutas |
+| DELETE | `/api/v1/paradas/{id}` | JWT AdminPolicy | ConcurrentWrites | 204/401/403/404/429 | 39-endpoint-admin-rutas |
+| POST | `/api/v1/rutas` | JWT AdminPolicy | ConcurrentWrites | 201/401/403/404/409/422/429 | 39-endpoint-admin-rutas |
+| PUT | `/api/v1/rutas/{id}` | JWT AdminPolicy | ConcurrentWrites | 200/401/403/404/409/422/429 | 39-endpoint-admin-rutas |
+| DELETE | `/api/v1/rutas/{id}` | JWT AdminPolicy | ConcurrentWrites | 204/401/403/404/429 | 39-endpoint-admin-rutas |
+| POST | `/api/v1/horarios` | JWT AdminPolicy | ConcurrentWrites | 201/401/403/404/422/429 | 40-endpoint-admin-horarios-tarifas |
+| PUT | `/api/v1/horarios/{id}` | JWT AdminPolicy | ConcurrentWrites | 200/401/403/404/422/429 | 40-endpoint-admin-horarios-tarifas |
+| DELETE | `/api/v1/horarios/{id}` | JWT AdminPolicy | ConcurrentWrites | 204/401/403/404/429 | 40-endpoint-admin-horarios-tarifas |
+| POST | `/api/v1/tarifas` | JWT AdminPolicy | ConcurrentWrites | 201/401/403/404/422/429 | 40-endpoint-admin-horarios-tarifas |
+| PUT | `/api/v1/tarifas/{id}` | JWT AdminPolicy | ConcurrentWrites | 200/401/403/404/422/429 | 40-endpoint-admin-horarios-tarifas |
+| DELETE | `/api/v1/tarifas/{id}` | JWT AdminPolicy | ConcurrentWrites | 204/401/403/404/429 | 40-endpoint-admin-horarios-tarifas |
+| POST | `/api/v1/destinos` | JWT AdminPolicy | ConcurrentWrites | 201/401/403/409/422/429 | 29-endpoint-destinos |
+| PUT | `/api/v1/destinos/{id}` | JWT AdminPolicy | ConcurrentWrites | 200/401/403/404/422/429 | 29-endpoint-destinos |
+| DELETE | `/api/v1/destinos/{id}` | JWT AdminPolicy | ConcurrentWrites | 204/401/403/404/429 | 29-endpoint-destinos |
+| GET | `/api/v1/admin/fuentes-datos` | JWT AdminPolicy | Admin | 200/401/403/429 | 53-endpoint-admin-fuentes-importaciones |
+| POST | `/api/v1/admin/fuentes-datos` | JWT AdminPolicy | ConcurrentWrites | 201/401/403/422/429 | 53-endpoint-admin-fuentes-importaciones |
+| PUT | `/api/v1/admin/fuentes-datos/{id}` | JWT AdminPolicy | ConcurrentWrites | 200/401/403/404/422/429 | 53-endpoint-admin-fuentes-importaciones |
+| DELETE | `/api/v1/admin/fuentes-datos/{id}` | JWT AdminPolicy | ConcurrentWrites | 204/401/403/404/429 | 53-endpoint-admin-fuentes-importaciones |
+| POST | `/api/v1/admin/importaciones` | JWT AdminPolicy | ConcurrentWrites | 201/401/403/404/422/429 | 53-endpoint-admin-fuentes-importaciones |
+| GET | `/api/v1/admin/importaciones` | JWT AdminPolicy | Admin | 200/401/403/429 | 53-endpoint-admin-fuentes-importaciones |
 | POST | `/api/v1/telemetria/inferencia` | no / consentimiento | Global | 200/400/422/429 | 36-endpoint-ml-inferencia |
 | POST | `/api/v1/recomendaciones` | no / opcional | Global | 200/400/422/429 | 37-endpoint-genai-recomendaciones |
 | GET | `/openapi/v1.json` (solo Dev) | no | — | 200/404 | 26-endpoint-documentacion-openapi (nv-01) |

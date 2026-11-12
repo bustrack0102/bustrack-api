@@ -311,11 +311,12 @@ internal sealed class InMemoryBusTrackStore : IBusTrackNoSqlStore
         return Task.CompletedTask;
     }
 
-    public Task<IReadOnlyList<CalificacionDoc>> ListCalificacionesAsync(Guid? rutaId, Guid? empresaId, Guid? usuarioId, CancellationToken ct)
+    public Task<IReadOnlyList<CalificacionDoc>> ListCalificacionesAsync(Guid? rutaId, Guid? empresaId, string? destinoId, Guid? usuarioId, CancellationToken ct)
     {
         var q = _calificaciones.Values.AsEnumerable();
         if (rutaId.HasValue) q = q.Where(c => c.RutaId == rutaId.Value);
         if (empresaId.HasValue) q = q.Where(c => c.EmpresaId == empresaId.Value);
+        if (!string.IsNullOrWhiteSpace(destinoId)) q = q.Where(c => string.Equals(c.DestinoId, destinoId.Trim(), StringComparison.OrdinalIgnoreCase));
         if (usuarioId.HasValue) q = q.Where(c => c.UsuarioId == usuarioId.Value);
         return Task.FromResult<IReadOnlyList<CalificacionDoc>>(q.OrderByDescending(c => c.FechaCreacion).ToList());
     }
@@ -465,4 +466,14 @@ internal sealed class InMemoryBusTrackStore : IBusTrackNoSqlStore
 
     public Task<IReadOnlyList<DispositivoFcmDoc>> ListDispositivosUsuarioAsync(Guid usuarioId, CancellationToken ct) =>
         Task.FromResult<IReadOnlyList<DispositivoFcmDoc>>(_dispositivos.Values.Where(x => x.UsuarioId == usuarioId).ToList());
+
+    public Task<bool> DeleteDispositivoFcmAsync(string id, Guid usuarioId, CancellationToken ct)
+    {
+        if (_dispositivos.TryGetValue(id, out var existing) && existing.UsuarioId == usuarioId)
+        {
+            return Task.FromResult(_dispositivos.TryRemove(id, out _));
+        }
+
+        return Task.FromResult(false);
+    }
 }

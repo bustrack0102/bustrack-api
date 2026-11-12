@@ -1,3 +1,4 @@
+using ApiSDD.Dtos.Operational;
 using ApiSDD.Services.NoSql;
 using Asp.Versioning;
 using Microsoft.AspNetCore.Authorization;
@@ -55,5 +56,40 @@ public sealed class TarifasController : ControllerBase
         }
 
         return Ok(result);
+    }
+
+    // POST /api/v1/tarifas (EP-HT-08)
+    [HttpPost]
+    [Authorize(Policy = "AdminPolicy")]
+    [EnableRateLimiting("ConcurrentWrites")]
+    public async Task<IActionResult> Create(
+        [FromBody] TarifaUpsertRequest request,
+        CancellationToken cancellationToken)
+    {
+        var created = await _catalog.CreateTarifaAsync(request, cancellationToken).ConfigureAwait(false);
+        return Created(new Uri($"/api/v1/tarifas/{created.Id}", UriKind.Relative), created);
+    }
+
+    // PUT /api/v1/tarifas/{id} (EP-HT-09)
+    [HttpPut("{id}")]
+    [Authorize(Policy = "AdminPolicy")]
+    [EnableRateLimiting("ConcurrentWrites")]
+    public async Task<IActionResult> Update(
+        [FromRoute] string id,
+        [FromBody] TarifaUpsertRequest request,
+        CancellationToken cancellationToken)
+    {
+        var updated = await _catalog.UpdateTarifaAsync(id, request, cancellationToken).ConfigureAwait(false);
+        return Ok(updated);
+    }
+
+    // DELETE /api/v1/tarifas/{id} (EP-HT-10)
+    [HttpDelete("{id}")]
+    [Authorize(Policy = "AdminPolicy")]
+    [EnableRateLimiting("ConcurrentWrites")]
+    public async Task<IActionResult> Delete([FromRoute] string id, CancellationToken cancellationToken)
+    {
+        await _catalog.DeactivateTarifaAsync(id, cancellationToken).ConfigureAwait(false);
+        return NoContent();
     }
 }

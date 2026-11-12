@@ -10,7 +10,10 @@ using ApiSDD.Security;
 using ApiSDD.Serialization;
 using ApiSDD.Services;
 using ApiSDD.Services.Email;
+using ApiSDD.Services.Moderation;
 using ApiSDD.Services.NoSql;
+using ApiSDD.Services.Notifications;
+using ApiSDD.Services.Storage;
 using ApiSDD.Validators;
 using Asp.Versioning;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -225,6 +228,12 @@ internal static class ServiceCollectionExtensions
 
             services.AddScoped<ApiSDD.Services.Empresa.IEmpresaService, ApiSDD.Services.Empresa.EmpresaService>();
             services.AddScoped<ITransportCatalogService, TransportCatalogService>();
+            services.AddScoped<IContentModerationService, ContentModerationService>();
+            services.AddScoped<IBlobMediaService, BlobMediaService>();
+            services.AddHttpClient("Fcm").AddStandardResilienceHandler();
+            services.AddScoped<IPushNotificationService, PushNotificationService>();
+            services.AddScoped<IUserInteractionService, UserInteractionService>();
+            services.AddScoped<IAdminCatalogService, AdminCatalogService>();
 
             if (isMongoPrimary)
             {

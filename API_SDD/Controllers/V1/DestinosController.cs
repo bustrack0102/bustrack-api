@@ -1,3 +1,4 @@
+using ApiSDD.Dtos.Operational;
 using ApiSDD.Services.NoSql;
 using Asp.Versioning;
 using Microsoft.AspNetCore.Authorization;
@@ -87,5 +88,40 @@ public sealed class DestinosController : ControllerBase
         }
 
         return Ok(result);
+    }
+
+    // POST /api/v1/destinos (EP-DE-06)
+    [HttpPost]
+    [Authorize(Policy = "AdminPolicy")]
+    [EnableRateLimiting("ConcurrentWrites")]
+    public async Task<IActionResult> Create(
+        [FromBody] DestinoUpsertRequest request,
+        CancellationToken cancellationToken)
+    {
+        var created = await _catalog.CreateDestinoAsync(request, cancellationToken).ConfigureAwait(false);
+        return Created(new Uri($"/api/v1/destinos/{created.Id}", UriKind.Relative), created);
+    }
+
+    // PUT /api/v1/destinos/{id} (EP-DE-07)
+    [HttpPut("{id}")]
+    [Authorize(Policy = "AdminPolicy")]
+    [EnableRateLimiting("ConcurrentWrites")]
+    public async Task<IActionResult> Update(
+        [FromRoute] string id,
+        [FromBody] DestinoUpsertRequest request,
+        CancellationToken cancellationToken)
+    {
+        var updated = await _catalog.UpdateDestinoAsync(id, request, cancellationToken).ConfigureAwait(false);
+        return Ok(updated);
+    }
+
+    // DELETE /api/v1/destinos/{id} (EP-DE-08)
+    [HttpDelete("{id}")]
+    [Authorize(Policy = "AdminPolicy")]
+    [EnableRateLimiting("ConcurrentWrites")]
+    public async Task<IActionResult> Delete([FromRoute] string id, CancellationToken cancellationToken)
+    {
+        await _catalog.DeactivateDestinoAsync(id, cancellationToken).ConfigureAwait(false);
+        return NoContent();
     }
 }

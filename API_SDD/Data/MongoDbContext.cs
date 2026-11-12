@@ -4,8 +4,12 @@
 // Nunca se almacena ni dispone antes de tiempo: un cliente singleton comparte el pool.
 // ---------------------------------------------------------------------------
 using System.Globalization;
+using System.Threading;
 using MongoDB.Bson;
+using MongoDB.Bson.Serialization;
 using MongoDB.Bson.Serialization.Attributes;
+using MongoDB.Bson.Serialization.Conventions;
+using MongoDB.Bson.Serialization.Serializers;
 using MongoDB.Driver;
 
 namespace ApiSDD.Data;
@@ -15,11 +19,34 @@ namespace ApiSDD.Data;
 /// </summary>
 public sealed class MongoDbContext : IDisposable
 {
+    private static int _bsonConventionsRegistered;
+
     private readonly MongoClient? _client;
     private readonly IMongoDatabase? _database;
 
+    static MongoDbContext() => EnsureBsonConventionsRegistered();
+
+    /// <summary>
+    /// Registra de forma idempotente la representación estándar de UUID (RFC 4122) y tolerancia a campos extra
+    /// exigida por MongoDB.Driver 3.x antes de serializar o consultar documentos con propiedades <see cref="Guid"/>.
+    /// </summary>
+    public static void EnsureBsonConventionsRegistered()
+    {
+        if (Interlocked.Exchange(ref _bsonConventionsRegistered, 1) != 0)
+        {
+            return;
+        }
+
+        _ = BsonSerializer.TryRegisterSerializer(new GuidSerializer(GuidRepresentation.Standard));
+        ConventionRegistry.Register(
+            "BusTrackNoSqlConventions",
+            new ConventionPack { new IgnoreExtraElementsConvention(true) },
+            static type => type.Namespace?.StartsWith("ApiSDD.Data", StringComparison.Ordinal) == true);
+    }
+
     public MongoDbContext(IConfiguration configuration)
     {
+        EnsureBsonConventionsRegistered();
         ArgumentNullException.ThrowIfNull(configuration);
         var rawConnectionString = configuration["MongoDb:ConnectionString"];
         var connectionString = SanitizeConnectionString(rawConnectionString);

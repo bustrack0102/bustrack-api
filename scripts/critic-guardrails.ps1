@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 <#
 .SYNOPSIS
   Critic ligero bloqueantes B1-B4 (constitución §8, AGENTS.md §4).
@@ -61,9 +61,9 @@ foreach ($f in (Get-SourceFiles "*.json")) {
   }
 }
 
-# B1c: S1135 TODO/FIXME/HACK en *.cs.
+# B1c: S1135 TODO/FIXME/HACK en *.cs (case-sensitive para evitar falsos positivos con 'todos').
 foreach ($f in (Get-SourceFiles "*.cs")) {
-  $hits = Select-String -LiteralPath $f.FullName -Pattern "TODO|FIXME|HACK" -SimpleMatch:$false
+  $hits = Select-String -LiteralPath $f.FullName -Pattern "\b(TODO|FIXME|HACK)\b" -CaseSensitive
   foreach ($h in $hits) { Fail "B1 $($f.Name):$($h.LineNumber) $($h.Line.Trim())" }
 }
 
@@ -112,8 +112,18 @@ foreach ($step in $order) {
 # B4: todo controller con fila en endpoints.md.
 $endpoints = Get-Content -LiteralPath "docs/endpoints.md" -Raw
 foreach ($f in (Get-SourceFiles "*Controller.cs")) {
-  $base = $f.BaseName.Replace("Controller", "").ToLower()
-  if ($endpoints -notmatch [regex]::Escape("/api/v1/$base")) {
+  $rawName = $f.BaseName.Replace("Controller", "")
+  $base = $rawName.ToLower()
+  $kebab = ([regex]::Replace($rawName, '(?<!^)([A-Z])', '-$1')).ToLower()
+  $ctrlText = Get-Content -LiteralPath $f.FullName -Raw
+  $matched = ($endpoints -match [regex]::Escape("/api/v1/$base")) -or ($endpoints -match [regex]::Escape("/api/v1/$kebab"))
+  if (-not $matched -and $ctrlText -match '\[Route\("api/v\{version:apiVersion\}"\)\]') {
+    foreach ($m in ([regex]::Matches($ctrlText, '\[Http(?:Get|Post|Put|Delete|Patch)\("([^"]+)"\)'))) {
+      $actionRoute = "/api/v1/" + ($m.Groups[1].Value -replace '/\{.*$', '')
+      if ($endpoints -match [regex]::Escape($actionRoute)) { $matched = $true; break }
+    }
+  }
+  if (-not $matched) {
     Fail "B4 $($f.Name) sin fila en docs/endpoints.md"
   }
 }

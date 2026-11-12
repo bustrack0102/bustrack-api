@@ -1,53 +1,88 @@
 // ---------------------------------------------------------------------------
-// MongoDbContext – encapsula el acceso a MongoDB Atlas.
-// La cadena de conexión se lee desde la configuración (MongoDb:ConnectionString).
-// Se mantiene fuera del repositorio mediante appsettings.Local.json o User Secrets.
+// MongoDbContext – encapsula el acceso a MongoDB Atlas (BusTrackNoSQL).
+// La cadena de conexión se lee desde configuración (MongoDb:ConnectionString).
+// Nunca se almacena ni dispone antes de tiempo: un cliente singleton comparte el pool.
 // ---------------------------------------------------------------------------
-using Microsoft.Extensions.Configuration;
+using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 using MongoDB.Driver;
 
 namespace ApiSDD.Data;
 
 /// <summary>
-/// Contexto MongoDB utilizado por los servicios de la API.
-/// Sólo expone las colecciones que necesita la capa de negocio.
+/// Contexto MongoDB singleton utilizado por los servicios y checks de salud de la API.
 /// </summary>
-public sealed class MongoDbContext
+public sealed class MongoDbContext : IDisposable
 {
-    private readonly IMongoDatabase _database;
+    private readonly MongoClient? _client;
+    private readonly IMongoDatabase? _database;
 
     public MongoDbContext(IConfiguration configuration)
     {
         ArgumentNullException.ThrowIfNull(configuration);
-        var connectionString = configuration["MongoDb:ConnectionString"]
-                               ?? throw new InvalidOperationException("MongoDb:ConnectionString no está configurado");
-        using var client = new MongoClient(connectionString);
-        var dbName = MongoUrl.Create(connectionString).DatabaseName
-                     ?? configuration["MongoDb:Database"]
-                     ?? "BusTrackNoSQL";
-        _database = client.GetDatabase(dbName);
+        var connectionString = configuration["MongoDb:ConnectionString"];
+        if (string.IsNullOrWhiteSpace(connectionString)
+            || connectionString.Contains("REEMPLAZAR", StringComparison.OrdinalIgnoreCase)
+            || connectionString.Contains("EXTERNA", StringComparison.OrdinalIgnoreCase))
+        {
+            IsConfigured = false;
+            return;
+        }
+
+        try
+        {
+            var settings = MongoClientSettings.FromConnectionString(connectionString);
+            settings.ServerSelectionTimeout = TimeSpan.FromSeconds(5);
+            settings.ConnectTimeout = TimeSpan.FromSeconds(5);
+            settings.SocketTimeout = TimeSpan.FromSeconds(15);
+
+            var dbName = MongoUrl.Create(connectionString).DatabaseName;
+            if (string.IsNullOrWhiteSpace(dbName))
+            {
+                dbName = configuration["MongoDb:Database"] ?? "BusTrackNoSQL";
+            }
+
+            _client = new MongoClient(settings);
+            _database = _client.GetDatabase(dbName);
+            IsConfigured = true;
+        }
+        catch (Exception ex) when (ex is MongoConfigurationException or FormatException or ArgumentException)
+        {
+            IsConfigured = false;
+            ConfigurationError = ex.Message;
+        }
     }
 
-    public IMongoDatabase Database => _database;
+    public bool IsConfigured { get; }
 
-    // ---------------------------------------------------------------------
-    // Colecciones usadas por los endpoints de Empresas.
-    // ---------------------------------------------------------------------
+    public string? ConfigurationError { get; }
+
+    public IMongoClient? Client => _client;
+
+    public void Dispose() => _client?.Dispose();
+
+    public IMongoDatabase Database =>
+        _database ?? throw new InvalidOperationException("MongoDb:ConnectionString no está configurado.");
+
+    public IMongoCollection<TDocument> GetCollection<TDocument>(string name)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        return Database.GetCollection<TDocument>(name);
+    }
+
     public IMongoCollection<EmpresaDocument> Empresas =>
-        _database.GetCollection<EmpresaDocument>("empresas");
+        Database.GetCollection<EmpresaDocument>("empresas");
 
     public IMongoCollection<MedioTransporteDocument> MediosTransporte =>
-        _database.GetCollection<MedioTransporteDocument>("mediosTransporte");
+        Database.GetCollection<MedioTransporteDocument>("mediosTransporte");
 
     public IMongoCollection<RutaDocument> Rutas =>
-        _database.GetCollection<RutaDocument>("rutas");
+        Database.GetCollection<RutaDocument>("rutas");
+
+    public IMongoCollection<BsonDocument> RawCollection(string name) =>
+        Database.GetCollection<BsonDocument>(name);
 }
 
-// ---------------------------------------------------------------------------
-// POCOs (Plain Old CLR Objects) que representan los documentos MongoDB.
-// Solo los campos necesarios para los endpoints de lectura están incluidos.
-// ---------------------------------------------------------------------------
 public sealed class EmpresaDocument
 {
     [BsonId]
@@ -80,5 +115,4 @@ public sealed class RutaDocument
     public string Id { get; set; } = default!;
     public string EmpresaId { get; set; } = default!;
     public string MedioTransporteId { get; set; } = default!;
-    // Campos adicionales pueden añadirse en el futuro.
 }

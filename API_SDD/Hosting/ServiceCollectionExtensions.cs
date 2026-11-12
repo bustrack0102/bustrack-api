@@ -1,10 +1,13 @@
 using System.Diagnostics;
+using System.IO.Compression;
 using System.Text;
+using System.Text.Json.Serialization.Metadata;
 using ApiSDD.Common;
 using ApiSDD.Data;
 using ApiSDD.Health;
 using ApiSDD.OpenApi;
 using ApiSDD.Security;
+using ApiSDD.Serialization;
 using ApiSDD.Services;
 using ApiSDD.Validators;
 using Asp.Versioning;
@@ -12,6 +15,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http.Timeouts;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.IdentityModel.Tokens;
@@ -33,7 +37,21 @@ internal static class ServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(configuration);
         ArgumentNullException.ThrowIfNull(environment);
 
-        services.AddControllers().AddJsonOptions(o => o.JsonSerializerOptions.PropertyNamingPolicy = null);
+        services.AddControllers().AddJsonOptions(o =>
+        {
+            o.JsonSerializerOptions.PropertyNamingPolicy = null;
+            o.JsonSerializerOptions.TypeInfoResolverChain.Insert(0, BusTrackJsonContext.Default);
+            o.JsonSerializerOptions.TypeInfoResolverChain.Add(new DefaultJsonTypeInfoResolver());
+        });
+
+        services.AddResponseCompression(o =>
+        {
+            o.EnableForHttps = true;
+            o.Providers.Add<BrotliCompressionProvider>();
+            o.Providers.Add<GzipCompressionProvider>();
+        });
+        services.Configure<BrotliCompressionProviderOptions>(o => o.Level = CompressionLevel.Fastest);
+        services.Configure<GzipCompressionProviderOptions>(o => o.Level = CompressionLevel.Fastest);
         services.AddOpenApi(o => o
             .AddDocumentTransformer<ApiVersionDocumentTransformer>()
             .AddDocumentTransformer<SecuritySchemeDocumentTransformer>());
@@ -91,19 +109,27 @@ internal static class ServiceCollectionExtensions
             AddJwt(services, configuration);
         }
 
+        var isMongoPrimary = string.Equals(
+            configuration["Persistence:Provider"],
+            "MongoDB",
+            StringComparison.OrdinalIgnoreCase);
+
         var connectionString = configuration.GetConnectionString("Default");
-        if (string.IsNullOrWhiteSpace(connectionString))
+        if (!isMongoPrimary && string.IsNullOrWhiteSpace(connectionString))
         {
             throw new InvalidOperationException("ConnectionStrings:Default is required (external SQL).");
         }
 
-        services.AddDbContext<AppDbContext>(o => o.UseSqlServer(
-            connectionString,
-            sql =>
-            {
-                sql.EnableRetryOnFailure();
-                sql.CommandTimeout(60);
-            }));
+        if (!string.IsNullOrWhiteSpace(connectionString))
+        {
+            services.AddDbContext<AppDbContext>(o => o.UseSqlServer(
+                connectionString,
+                sql =>
+                {
+                    sql.EnableRetryOnFailure();
+                    sql.CommandTimeout(60);
+                }));
+        }
 
         var keysPath = configuration["DataProtection:KeysPath"];
         var dataProtection = services.AddDataProtection();
@@ -117,10 +143,13 @@ internal static class ServiceCollectionExtensions
             throw new InvalidOperationException("DataProtection:KeysPath is required in Production.");
         }
 
-        services.AddHealthChecks()
+        var healthChecks = services.AddHealthChecks()
             .AddCheck<MongoDbHealthCheck>("mongodb")
-            .AddCheck<SqlServerHealthCheck>("sql")
             .AddCheck<AssemblyIntegrityCheck>("assembly");
+        if (!isMongoPrimary && !string.IsNullOrWhiteSpace(connectionString))
+        {
+            healthChecks.AddCheck<SqlServerHealthCheck>("sql");
+        }
 
         services.AddRequestTimeouts(o => o.DefaultPolicy = new RequestTimeoutPolicy
         {
@@ -157,6 +186,7 @@ internal static class ServiceCollectionExtensions
 
         // Empresa read slice (list/autocomplete/detail) on MongoDB.
         services.AddSingleton<ApiSDD.Data.MongoDbContext>();
+        services.AddHostedService<ApiSDD.Data.MongoIndexInitializer>();
         services.AddScoped<ApiSDD.Services.Empresa.IEmpresaService, ApiSDD.Services.Empresa.EmpresaService>();
         services.AddScoped<ApiSDD.Services.Empresa.IEmpresaSqlService, ApiSDD.Services.Empresa.EmpresaSqlService>();
         services.AddScoped<ApiSDD.Services.IUsuarioPerfilService, ApiSDD.Services.UsuarioPerfilService>();

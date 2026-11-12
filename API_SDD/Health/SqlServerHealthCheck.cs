@@ -3,7 +3,7 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace ApiSDD.Health;
 
-/// <summary>Check SQL real: CanConnect acotado a 5s para fallar rápido (503) sin DB.</summary>
+/// <summary>Check SQL real: CanConnect acotado a 5s cuando Persistence:Provider es SqlServer.</summary>
 internal sealed class SqlServerHealthCheck : IHealthCheck
 {
     private readonly AppDbContext _db;
@@ -25,15 +25,15 @@ internal sealed class SqlServerHealthCheck : IHealthCheck
             var reachable = await _db.Database.CanConnectAsync(timeout.Token).ConfigureAwait(false);
             return reachable
                 ? HealthCheckResult.Healthy("sql reachable.")
-                : HealthCheckResult.Degraded("sql unreachable (using NoSQL MongoDB primary).");
+                : HealthCheckResult.Unhealthy("sql unreachable.");
         }
         catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested)
         {
-            return HealthCheckResult.Degraded("sql check timed out (using NoSQL MongoDB primary).", ex);
+            return HealthCheckResult.Unhealthy("sql check timed out.", ex);
         }
         catch (Exception ex)
         {
-            return HealthCheckResult.Degraded("sql unreachable (using NoSQL MongoDB primary).", ex);
+            return HealthCheckResult.Unhealthy("sql unreachable.", ex);
         }
     }
 }

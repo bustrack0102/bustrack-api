@@ -8,10 +8,12 @@ namespace ApiSDD.Health;
 internal sealed class MongoDbHealthCheck : IHealthCheck
 {
     private readonly MongoDbContext _mongo;
+    private readonly IConfiguration _configuration;
 
-    public MongoDbHealthCheck(MongoDbContext mongo)
+    public MongoDbHealthCheck(MongoDbContext mongo, IConfiguration configuration)
     {
         _mongo = mongo ?? throw new ArgumentNullException(nameof(mongo));
+        _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
     }
 
     public async Task<HealthCheckResult> CheckHealthAsync(
@@ -19,21 +21,34 @@ internal sealed class MongoDbHealthCheck : IHealthCheck
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(context);
+        var isMongoPrimary = string.Equals(
+            _configuration["Persistence:Provider"],
+            "MongoDB",
+            StringComparison.OrdinalIgnoreCase);
+
+        if (!_mongo.IsConfigured)
+        {
+            return isMongoPrimary
+                ? HealthCheckResult.Unhealthy("mongodb unconfigured.")
+                : HealthCheckResult.Healthy("mongodb optional when SQL primary is active.");
+        }
+
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeout.CancelAfter(TimeSpan.FromSeconds(5));
         try
         {
             var pingCommand = new BsonDocument("ping", 1);
-            await _mongo.Database.RunCommandAsync<BsonDocument>(pingCommand, cancellationToken: timeout.Token).ConfigureAwait(false);
+            await _mongo.Database.RunCommandAsync<BsonDocument>(pingCommand, cancellationToken: timeout.Token)
+                .ConfigureAwait(false);
             return HealthCheckResult.Healthy("mongodb reachable.");
         }
         catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested)
         {
-            return HealthCheckResult.Degraded("mongodb check timed out (using resilient offline fallback).", ex);
+            return HealthCheckResult.Unhealthy("mongodb check timed out.", ex);
         }
         catch (Exception ex)
         {
-            return HealthCheckResult.Degraded($"mongodb unreachable (using resilient offline fallback): {ex.Message}", ex);
+            return HealthCheckResult.Unhealthy("mongodb unreachable.", ex);
         }
     }
 }

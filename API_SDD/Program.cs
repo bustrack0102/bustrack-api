@@ -73,6 +73,7 @@ app.UseCors(ServiceCollectionExtensions.CorsPolicy);
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseResponseCompression();
 app.MapControllers();
 
 if (app.Environment.IsDevelopment())

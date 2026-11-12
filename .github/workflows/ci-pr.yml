@@ -31,8 +31,15 @@ jobs:
       - name: Run Unit Tests with Coverage
         run: dotnet test UnitTest/UnitTest.csproj -c Release --no-build --collect:"XPlat Code Coverage" --results-directory ./TestResults
 
-      - name: Validación SDD
-        run: pwsh -File scripts/check_sdd.ps1
+      - name: Run Integration & Security Tests (no-Docker baseline)
+        run: |
+          dotnet test IntegrationTest/IntegrationTest.csproj -c Release --no-build --filter "FullyQualifiedName~HealthTests|FullyQualifiedName~ErrorsTests|FullyQualifiedName~RoutingTests|FullyQualifiedName~EpRoutingTests"
+          dotnet test SecurityTest/SecurityTest.csproj -c Release --no-build --filter "FullyQualifiedName~HeadersTests|FullyQualifiedName~AssemblyIntegrityTests"
+
+      - name: Validación SDD & Critic Guardrails
+        run: |
+          pwsh -File scripts/check_sdd.ps1
+          pwsh -File scripts/critic-guardrails.ps1
 
       - name: Static Security Analysis (Semgrep)
         uses: semgrep/semgrep-action@v1

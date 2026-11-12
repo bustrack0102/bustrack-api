@@ -34,8 +34,16 @@ jobs:
       - name: Build solution
         run: dotnet build API_SDD.slnx -c Release --no-restore
 
-      - name: Run Unit Tests
-        run: dotnet test UnitTest/UnitTest.csproj -c Release --no-build
+      - name: Run Unit & Non-Docker Integration/Security Tests
+        run: |
+          dotnet test UnitTest/UnitTest.csproj -c Release --no-build
+          dotnet test IntegrationTest/IntegrationTest.csproj -c Release --no-build --filter "FullyQualifiedName~HealthTests|FullyQualifiedName~ErrorsTests|FullyQualifiedName~RoutingTests|FullyQualifiedName~EpRoutingTests"
+          dotnet test SecurityTest/SecurityTest.csproj -c Release --no-build --filter "FullyQualifiedName~HeadersTests|FullyQualifiedName~AssemblyIntegrityTests"
+
+      - name: SDD & Critic Guardrails
+        run: |
+          pwsh -File scripts/check_sdd.ps1
+          pwsh -File scripts/critic-guardrails.ps1
 
       - name: Static Security Analysis (Semgrep)
         uses: semgrep/semgrep-action@v1
@@ -43,7 +51,7 @@ jobs:
           config: .semgrep/rules/semgrep.yaml
 
   deploy-azure:
-    name: Deploy to Azure Container Instances
+    name: Deploy to Azure Container Apps / ACI
     needs: [verify]
     if: always() && (needs.verify.result == 'success' || inputs.skip_tests == true)
     runs-on: ubuntu-latest
@@ -51,109 +59,96 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v5
 
-      - name: Setup .NET 10
-        uses: actions/setup-dotnet@v5
-        with:
-          dotnet-version: '10.0.x'
-
       - name: Azure Login
         uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Ensure Azure Container Registry exists
+      - name: Ensure Azure Container Registry credentials
         run: |
           ACR_NAME=bustrackacr0102
-          if ! az acr show --name "$ACR_NAME" -o none 2>/dev/null; then
-            echo "Creando ACR $ACR_NAME..."
-            az acr create --name "$ACR_NAME" \
-              --resource-group rg-bustrack-ncus \
-              --sku Basic --admin-enabled true
-          else
-            echo "ACR $ACR_NAME ya existe."
-            az acr update --name "$ACR_NAME" --admin-enabled true
-          fi
-          # Credenciales admin (efímeras en este job, nunca se escriben al repo)
+          az acr update --name "$ACR_NAME" --admin-enabled true -o none
           echo "ACR_LOGIN_SERVER=$(az acr show -n $ACR_NAME --query loginServer -o tsv)" >> $GITHUB_ENV
           echo "ACR_USERNAME=$(az acr credential show -n $ACR_NAME --query username -o tsv)" >> $GITHUB_ENV
           echo "ACR_PASSWORD=$(az acr credential show -n $ACR_NAME --query passwords[0].value -o tsv)" >> $GITHUB_ENV
 
-      - name: Build and push image to ACR
+      - name: Build and push image to ACR (SemVer 0.2.0)
         run: |
-          echo "Iniciando sesión en ACR con Docker..."
           echo "$ACR_PASSWORD" | docker login "$ACR_LOGIN_SERVER" --username "$ACR_USERNAME" --password-stdin
-          TAG="${ACR_LOGIN_SERVER%/}/bustrack-api:${GITHUB_SHA::12}"
+          SHORT_SHA="${GITHUB_SHA::12}"
+          TAG="${ACR_LOGIN_SERVER%/}/bustrack-api:0.2.0-${SHORT_SHA}"
           TAG_LATEST="${ACR_LOGIN_SERVER%/}/bustrack-api:latest"
-          echo "Construyendo imagen Docker en runner de GitHub Actions..."
           docker build -t "$TAG" -t "$TAG_LATEST" -f Dockerfile .
-          echo "Subiendo imagen a ACR..."
           docker push "$TAG"
           docker push "$TAG_LATEST"
           echo "IMAGE_TAG=$TAG" >> $GITHUB_ENV
 
-      - name: Deploy container to Azure Container Instances
+      - name: Deploy bustrack-api (Container App if present, otherwise ACI)
         run: |
-          echo "Desplegando contenedor bustrack-api en Azure (rg-bustrack-ncus)..."
-          az container create \
-            --resource-group rg-bustrack-ncus \
-            --name bustrack-api \
-            --image "$IMAGE_TAG" \
-            --registry-login-server "$ACR_LOGIN_SERVER" \
-            --registry-username "$ACR_USERNAME" \
-            --registry-password "$ACR_PASSWORD" \
-            --dns-name-label bustrack-api-uttt \
-            --ports 8000 \
-            --os-type Linux \
-            --cpu 1 \
-            --memory 1.5 \
-            --environment-variables PORT=8000 ASPNETCORE_ENVIRONMENT=Production DataProtection__KeysPath=/app/keys EnableHttpsRedirection=false
+          if az containerapp show -g rg-bustrack-ncus -n bustrack-api -o none 2>/dev/null; then
+            echo "Actualizando Azure Container App bustrack-api..."
+            az containerapp secret set -g rg-bustrack-ncus -n bustrack-api \
+              --secrets \
+                mongodb-cs="${{ secrets.MONGODB_CONNECTION_STRING }}" \
+                jwt-key="${{ secrets.JWT_SECRET_KEY }}" \
+                internal-key="${{ secrets.INTERNAL_SERVICE_KEY }}" -o none
+            az containerapp update -g rg-bustrack-ncus -n bustrack-api \
+              --image "$IMAGE_TAG" \
+              --set-env-vars \
+                PORT=8000 \
+                ASPNETCORE_ENVIRONMENT=Production \
+                DataProtection__KeysPath=/app/keys \
+                Persistence__Provider=MongoDB \
+                MongoDb__Database=BusTrackNoSQL \
+                MongoDb__ConnectionString=secretref:mongodb-cs \
+                Jwt__Key=secretref:jwt-key \
+                InternalService__Key=secretref:internal-key \
+                EnableHttpsRedirection=false -o none
+            FQDN=$(az containerapp show -g rg-bustrack-ncus -n bustrack-api --query "properties.configuration.ingress.fqdn" -o tsv)
+            echo "API_URL=https://${FQDN}" >> $GITHUB_ENV
+          else
+            echo "Desplegando bustrack-api en ACI (etapa de transición)..."
+            az container create \
+              --resource-group rg-bustrack-ncus \
+              --name bustrack-api \
+              --image "$IMAGE_TAG" \
+              --registry-login-server "$ACR_LOGIN_SERVER" \
+              --registry-username "$ACR_USERNAME" \
+              --registry-password "$ACR_PASSWORD" \
+              --dns-name-label bustrack-api-uttt \
+              --ports 8000 \
+              --os-type Linux \
+              --cpu 1 \
+              --memory 1.5 \
+              --environment-variables \
+                PORT=8000 \
+                ASPNETCORE_ENVIRONMENT=Production \
+                DataProtection__KeysPath=/app/keys \
+                Persistence__Provider=MongoDB \
+                MongoDb__Database=BusTrackNoSQL \
+                EnableHttpsRedirection=false \
+              --secure-environment-variables \
+                MongoDb__ConnectionString="${{ secrets.MONGODB_CONNECTION_STRING }}" \
+                Jwt__Key="${{ secrets.JWT_SECRET_KEY }}" \
+                InternalService__Key="${{ secrets.INTERNAL_SERVICE_KEY }}" -o none
+            echo "API_URL=http://bustrack-api-uttt.northcentralus.azurecontainer.io:8000" >> $GITHUB_ENV
+          fi
 
-      - name: Smoke Test & Health Check Probe
+      - name: Smoke Test & Readiness Gate (/health + /health/ready + /api/v1/ping)
         run: |
-          API_URL="http://bustrack-api-uttt.northcentralus.azurecontainer.io:8000"
-          echo "Verificando disponibilidad de la API en $API_URL..."
-          MAX_RETRIES=30
-          DELAY=10
+          echo "Verificando $API_URL..."
           HEALTHY=0
-
-          for i in $(seq 1 $MAX_RETRIES); do
-            echo "Intento $i/$MAX_RETRIES: Consultando $API_URL/health..."
+          for i in $(seq 1 30); do
             STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$API_URL/health" || echo "000")
             if [ "$STATUS_CODE" -eq 200 ]; then
-              echo "✅ El servicio respondió con 200 OK!"
               HEALTHY=1
               break
             fi
-            echo "El contenedor aún está iniciando (código HTTP $STATUS_CODE). Esperando ${DELAY}s..."
-            sleep $DELAY
+            sleep 10
           done
-
-          if [ "$HEALTHY" -ne 1 ]; then
-            echo "❌ Error: La API no respondió 200 OK tras $((MAX_RETRIES * DELAY)) segundos."
-            echo "=== LOGS DEL CONTENEDOR ==="
-            az container logs --resource-group rg-bustrack-ncus --name bustrack-api || true
-            exit 1
-          fi
-
-          echo "Probando endpoint de ping..."
-          PING_BODY=$(curl -s --max-time 10 "$API_URL/api/v1/ping" || echo "")
-          echo "Respuesta de Ping: $PING_BODY"
-
-          echo "Probando endpoint /health/ready..."
-          READY_BODY=$(curl -s --max-time 10 "$API_URL/health/ready" || echo "")
-          echo "Respuesta de Ready: $READY_BODY"
-
-      - name: Generate Deployment Summary
-        if: always()
-        run: |
-          echo "### 🚀 Resumen de Despliegue en Azure" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Propiedad | Detalle |" >> $GITHUB_STEP_SUMMARY
-          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
-          echo "| **Estado** | 🟢 Exitoso |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Resource Group** | \`rg-bustrack-ncus\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Contenedor** | \`bustrack-api\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Región** | North Central US |" >> $GITHUB_STEP_SUMMARY
-          echo "| **URL Pública** | [bustrack-api-uttt](http://bustrack-api-uttt.northcentralus.azurecontainer.io:8000) |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Liveness Probe** | [\`/health\`](http://bustrack-api-uttt.northcentralus.azurecontainer.io:8000/health) (200 OK) |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Ping Probe** | [\`/api/v1/ping\`](http://bustrack-api-uttt.northcentralus.azurecontainer.io:8000/api/v1/ping) (200 OK) |" >> $GITHUB_STEP_SUMMARY
+          [ "$HEALTHY" -eq 1 ] || { az container logs -g rg-bustrack-ncus -n bustrack-api || true; exit 1; }
+          READY_CODE=$(curl -s -o /tmp/ready.json -w "%{http_code}" --max-time 15 "$API_URL/health/ready" || echo "000")
+          cat /tmp/ready.json
+          [ "$READY_CODE" -eq 200 ] || { echo "Error: /health/ready retornó HTTP $READY_CODE"; exit 1; }
+          grep -q '"status":"Healthy"' /tmp/ready.json || { echo "Error: /health/ready no está Healthy"; exit 1; }
+          curl -sf --max-time 10 "$API_URL/api/v1/ping"

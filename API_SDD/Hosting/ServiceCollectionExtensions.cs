@@ -10,6 +10,7 @@ using ApiSDD.Security;
 using ApiSDD.Serialization;
 using ApiSDD.Services;
 using ApiSDD.Services.Email;
+using ApiSDD.Services.Integrations;
 using ApiSDD.Services.Moderation;
 using ApiSDD.Services.NoSql;
 using ApiSDD.Services.Notifications;
@@ -231,9 +232,14 @@ internal static class ServiceCollectionExtensions
             services.AddScoped<IContentModerationService, ContentModerationService>();
             services.AddScoped<IBlobMediaService, BlobMediaService>();
             services.AddHttpClient("Fcm").AddStandardResilienceHandler();
+            services.AddHttpClient("MlService").AddStandardResilienceHandler();
+            services.AddHttpClient("GenAiService").AddStandardResilienceHandler();
+            services.AddScoped<IMlServiceClient, MlServiceClient>();
+            services.AddScoped<IGenAiServiceClient, GenAiServiceClient>();
             services.AddScoped<IPushNotificationService, PushNotificationService>();
             services.AddScoped<IUserInteractionService, UserInteractionService>();
             services.AddScoped<IAdminCatalogService, AdminCatalogService>();
+            services.AddScoped<IIntelligenceService, IntelligenceService>();
 
             if (isMongoPrimary)
             {

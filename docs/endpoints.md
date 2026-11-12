@@ -102,7 +102,16 @@
 | POST | `/api/v1/admin/importaciones` | JWT AdminPolicy | ConcurrentWrites | 201/401/403/404/422/429 | 53-endpoint-admin-fuentes-importaciones |
 | GET | `/api/v1/admin/importaciones` | JWT AdminPolicy | Admin | 200/401/403/429 | 53-endpoint-admin-fuentes-importaciones |
 | POST | `/api/v1/telemetria/inferencia` | no / consentimiento | Global | 200/400/422/429 | 36-endpoint-ml-inferencia |
+| GET | `/api/v1/consentimientos/me` | JWT | Global | 200/401/429 | 54-endpoint-consentimientos-sensores |
+| POST | `/api/v1/consentimientos` | JWT | ConcurrentWrites | 200/401/422/429 | 54-endpoint-consentimientos-sensores |
+| DELETE | `/api/v1/consentimientos/me` | JWT | ConcurrentWrites | 200/401/429 | 54-endpoint-consentimientos-sensores |
+| POST | `/api/v1/sensores/lotes` | JWT + Consentimiento | ConcurrentWrites | 201/401/403/404/422/429 | 54-endpoint-consentimientos-sensores |
+| GET | `/api/v1/sensores/lotes` | JWT AdminPolicy | Admin | 200/401/403/429 | 54-endpoint-consentimientos-sensores |
+| GET | `/api/v1/candidatos-parada` | JWT AdminPolicy | Admin | 200/401/403/429 | 54-endpoint-consentimientos-sensores |
+| PATCH | `/api/v1/admin/candidatos-parada/{id}/validar` | JWT AdminPolicy | ConcurrentWrites | 200/401/403/404/409/429 | 54-endpoint-consentimientos-sensores |
 | POST | `/api/v1/recomendaciones` | no / opcional | Global | 200/400/422/429 | 37-endpoint-genai-recomendaciones |
+| GET | `/api/v1/recomendaciones/historial` | JWT | Global | 200/401/429 | 55-endpoint-recomendaciones-historial |
+| POST | `/api/v1/recomendaciones/{id}/retroalimentacion` | JWT | ConcurrentWrites | 200/401/403/404/422/429 | 55-endpoint-recomendaciones-historial |
 | GET | `/openapi/v1.json` (solo Dev) | no | — | 200/404 | 26-endpoint-documentacion-openapi (nv-01) |
 | GET | `/scalar/v1` (solo Dev) | no | — | 200/404 | 26-endpoint-documentacion-openapi (nv-01) |
 

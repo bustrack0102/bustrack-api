@@ -1,45 +1,70 @@
 using System.Globalization;
 using System.Security.Claims;
 using ApiSDD.Common;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
 
 namespace ApiSDD.Security;
 
 /// <summary>
-/// nv-06: blacklist writer and reader. Expired tokens are a no-op; missing claims deny.
+/// nv-06 + Req 10/15: writer/reader de blacklist JWT.
+/// Usa IDistributedCache (Redis en producción multi-réplica, DistributedMemoryCache en local)
+/// y mantiene constructor IMemoryCache por compatibilidad con pruebas unitarias legacy.
 /// </summary>
 internal sealed class TokenRevocationService : ITokenRevocationService
 {
-    private readonly IMemoryCache _cache;
-
+    private readonly IDistributedCache? _distributedCache;
+    private readonly IMemoryCache? _memoryCache;
     private readonly TimeProvider _time;
 
     public TokenRevocationService(IMemoryCache cache, TimeProvider time)
     {
-        _cache = cache ?? throw new ArgumentNullException(nameof(cache));
+        _memoryCache = cache ?? throw new ArgumentNullException(nameof(cache));
         _time = time ?? throw new ArgumentNullException(nameof(time));
     }
 
-    public Task RevokeAsync(string jti, DateTimeOffset exp, CancellationToken cancellationToken)
+    [ActivatorUtilitiesConstructor]
+    public TokenRevocationService(IDistributedCache distributedCache, TimeProvider time)
+    {
+        _distributedCache = distributedCache ?? throw new ArgumentNullException(nameof(distributedCache));
+        _time = time ?? throw new ArgumentNullException(nameof(time));
+    }
+
+    public async Task RevokeAsync(string jti, DateTimeOffset exp, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrEmpty(jti);
         var ttl = exp - _time.GetUtcNow();
         if (ttl <= TimeSpan.Zero)
         {
-            return Task.CompletedTask;
+            return;
         }
 
-        _cache.Set(KeyOf(jti), exp.ToUnixTimeSeconds(), new MemoryCacheEntryOptions
+        if (_distributedCache is not null)
+        {
+            await _distributedCache.SetStringAsync(
+                KeyOf(jti),
+                exp.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture),
+                new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = ttl },
+                cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
+        _memoryCache!.Set(KeyOf(jti), exp.ToUnixTimeSeconds(), new MemoryCacheEntryOptions
         {
             AbsoluteExpirationRelativeToNow = ttl,
         });
-        return Task.CompletedTask;
     }
 
-    public Task<bool> IsRevokedAsync(string jti, CancellationToken cancellationToken)
+    public async Task<bool> IsRevokedAsync(string jti, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrEmpty(jti);
-        return Task.FromResult(_cache.TryGetValue(KeyOf(jti), out _));
+        if (_distributedCache is not null)
+        {
+            var raw = await _distributedCache.GetStringAsync(KeyOf(jti), cancellationToken).ConfigureAwait(false);
+            return raw is not null;
+        }
+
+        return _memoryCache!.TryGetValue(KeyOf(jti), out _);
     }
 
     public async Task RevokeCurrentAsync(ClaimsPrincipal user, CancellationToken cancellationToken)

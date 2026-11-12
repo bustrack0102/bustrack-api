@@ -42,6 +42,9 @@
 | `44-endpoint-usuario-perfil-me` | `GET /api/v1/usuarios/me` | Endpoint de consulta de perfil de usuario autenticado (EP-AU-07) | Implementado |
 | `45-endpoint-usuario-perfil-editar` | `PUT /api/v1/usuarios/me` | Endpoint de edición de perfil de usuario autenticado (EP-AU-08) | Implementado |
 | `46-endpoint-usuario-perfil-baja` | `DELETE /api/v1/usuarios/me` | Endpoint de baja de cuenta de usuario autenticado (EP-AU-09) | Implementado |
+| `47-endpoint-moderacion` | `POST /api/v1/moderacion` | Endpoint de moderación de contenido | Implementado |
+| `48-endpoint-mapa-elementos` | `GET /api/v1/mapa/elementos` | Endpoint de elementos del mapa interactivo (EP-RP-10) | Implementado |
+| `49-endpoint-catalogos-estado` | `GET /api/v1/catalogos/estado-actualizacion y /api/v1/health` | Endpoint de versión de catálogos SQLite y health v1 (EP-AD-01/09) | Implementado |
 
 ## Reglas
 

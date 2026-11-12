@@ -3,6 +3,7 @@
 // La cadena de conexión se lee desde configuración (MongoDb:ConnectionString).
 // Nunca se almacena ni dispone antes de tiempo: un cliente singleton comparte el pool.
 // ---------------------------------------------------------------------------
+using System.Globalization;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 using MongoDB.Driver;
@@ -20,7 +21,8 @@ public sealed class MongoDbContext : IDisposable
     public MongoDbContext(IConfiguration configuration)
     {
         ArgumentNullException.ThrowIfNull(configuration);
-        var connectionString = configuration["MongoDb:ConnectionString"];
+        var rawConnectionString = configuration["MongoDb:ConnectionString"];
+        var connectionString = SanitizeConnectionString(rawConnectionString);
         if (string.IsNullOrWhiteSpace(connectionString)
             || connectionString.Contains("REEMPLAZAR", StringComparison.OrdinalIgnoreCase)
             || connectionString.Contains("EXTERNA", StringComparison.OrdinalIgnoreCase))
@@ -51,6 +53,36 @@ public sealed class MongoDbContext : IDisposable
             IsConfigured = false;
             ConfigurationError = ex.Message;
         }
+    }
+
+    internal static string SanitizeConnectionString(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return string.Empty;
+        }
+
+        Span<char> buffer = raw.Length <= 512 ? stackalloc char[raw.Length] : new char[raw.Length];
+        var idx = 0;
+        foreach (var ch in raw)
+        {
+            var cat = char.GetUnicodeCategory(ch);
+            if (cat is UnicodeCategory.Control
+                    or UnicodeCategory.Format
+                    or UnicodeCategory.LineSeparator
+                    or UnicodeCategory.ParagraphSeparator
+                    or UnicodeCategory.Surrogate
+                    or UnicodeCategory.PrivateUse
+                    or UnicodeCategory.OtherNotAssigned
+                || (cat == UnicodeCategory.SpaceSeparator && ch != ' '))
+            {
+                continue;
+            }
+
+            buffer[idx++] = ch;
+        }
+
+        return new string(buffer[..idx]).Trim();
     }
 
     public bool IsConfigured { get; }

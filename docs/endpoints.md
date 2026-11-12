@@ -40,10 +40,29 @@
 | PUT | `/api/v1/medios-transporte/{id}` | JWT AdminPolicy | ConcurrentWrites | 200/400/401/403/404/409/422/429 | 30-endpoint-medios-transporte (EP-EM-11) |
 | DELETE | `/api/v1/medios-transporte/{id}` | JWT AdminPolicy | ConcurrentWrites | 200/401/403/404/409/429 | 30-endpoint-medios-transporte (EP-EM-12) |
 | GET | `/api/v1/rutas` | no / opcional | Global | 200/400/429 | 19-endpoint-rutas |
+| GET | `/api/v1/rutas/buscar` | no / opcional | Global | 200/400/429 | 19-endpoint-rutas |
+| GET | `/api/v1/rutas/autocompletar` | no / opcional | Global | 200/400/429 | 19-endpoint-rutas |
 | GET | `/api/v1/rutas/{id}` | no / opcional | Global | 200/400/404/429 | 31-endpoint-ruta-individual |
 | GET | `/api/v1/rutas/{id}/paradas` | no / opcional | Global | 200/400/404/429 | 20-endpoint-paradas |
+| GET | `/api/v1/rutas/{id}/geometria` | no / opcional | Global | 200/400/404/429 | 31-endpoint-ruta-individual |
+| GET | `/api/v1/rutas/{id}/horarios` | no / opcional | Global | 200/400/404/429 | 21-endpoint-horarios |
+| GET | `/api/v1/rutas/{id}/tarifas` | no / opcional | Global | 200/400/404/429 | 22-endpoint-tarifas |
 | GET | `/api/v1/paradas` | no / opcional | Global | 200/400/429 | 20-endpoint-paradas |
+| GET | `/api/v1/paradas/autocompletar` | no / opcional | Global | 200/400/429 | 20-endpoint-paradas |
+| GET | `/api/v1/paradas/{id}` | no / opcional | Global | 200/404/429 | 32-endpoint-parada-individual |
 | GET | `/api/v1/paradas/cercanas` | no / opcional | Global | 200/400/429 | 32-endpoint-parada-individual |
+| GET | `/api/v1/mapa/elementos` | no / opcional | Global | 200/400/429 | 48-endpoint-mapa-elementos |
+| GET | `/api/v1/horarios` | no / opcional | Global | 200/400/429 | 21-endpoint-horarios |
+| GET | `/api/v1/horarios/siguiente` | no / opcional | Global | 200/400/404/429 | 21-endpoint-horarios |
+| GET | `/api/v1/tarifas` | no / opcional | Global | 200/400/429 | 22-endpoint-tarifas |
+| GET | `/api/v1/tarifas/calcular` | no / opcional | Global | 200/400/404/429 | 22-endpoint-tarifas |
+| GET | `/api/v1/destinos` | no / opcional | Global | 200/400/429 | 29-endpoint-destinos |
+| GET | `/api/v1/destinos/autocompletar` | no / opcional | Global | 200/400/429 | 29-endpoint-destinos |
+| GET | `/api/v1/destinos/categorias` | no / opcional | Global | 200/429 | 29-endpoint-destinos |
+| GET | `/api/v1/destinos/{id}` | no / opcional | Global | 200/404/429 | 29-endpoint-destinos |
+| GET | `/api/v1/destinos/{id}/rutas` | no / opcional | Global | 200/404/429 | 29-endpoint-destinos |
+| GET | `/api/v1/catalogos/estado-actualizacion` | no | Global | 200/429 | 49-endpoint-catalogos-estado |
+| GET | `/api/v1/health` | no | Global | 200/503 | 49-endpoint-catalogos-estado |
 | POST | `/api/v1/moderacion` | no | Global | 200/400/429 | 47-endpoint-moderacion |
 | POST | `/api/v1/telemetria/inferencia` | no / consentimiento | Global | 200/400/422/429 | 36-endpoint-ml-inferencia |
 | POST | `/api/v1/recomendaciones` | no / opcional | Global | 200/400/422/429 | 37-endpoint-genai-recomendaciones |

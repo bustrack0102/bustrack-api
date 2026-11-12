@@ -9,6 +9,8 @@ using ApiSDD.OpenApi;
 using ApiSDD.Security;
 using ApiSDD.Serialization;
 using ApiSDD.Services;
+using ApiSDD.Services.Email;
+using ApiSDD.Services.NoSql;
 using ApiSDD.Validators;
 using Asp.Versioning;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -17,6 +19,7 @@ using Microsoft.AspNetCore.Http.Timeouts;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.IdentityModel.Tokens;
 using System.Threading.RateLimiting;
@@ -114,87 +117,132 @@ internal static class ServiceCollectionExtensions
             "MongoDB",
             StringComparison.OrdinalIgnoreCase);
 
-        var connectionString = configuration.GetConnectionString("Default");
-        if (!isMongoPrimary && string.IsNullOrWhiteSpace(connectionString))
-        {
-            throw new InvalidOperationException("ConnectionStrings:Default is required (external SQL).");
-        }
-
-        if (!string.IsNullOrWhiteSpace(connectionString))
-        {
-            services.AddDbContext<AppDbContext>(o => o.UseSqlServer(
-                connectionString,
-                sql =>
-                {
-                    sql.EnableRetryOnFailure();
-                    sql.CommandTimeout(60);
-                }));
-        }
-
-        var keysPath = configuration["DataProtection:KeysPath"];
-        var dataProtection = services.AddDataProtection();
-        if (!string.IsNullOrWhiteSpace(keysPath))
-        {
-            Directory.CreateDirectory(keysPath);
-            dataProtection.PersistKeysToFileSystem(new DirectoryInfo(keysPath));
-        }
-        else if (environment.IsProduction())
-        {
-            throw new InvalidOperationException("DataProtection:KeysPath is required in Production.");
-        }
-
-        var healthChecks = services.AddHealthChecks()
-            .AddCheck<MongoDbHealthCheck>("mongodb")
-            .AddCheck<AssemblyIntegrityCheck>("assembly");
-        if (!isMongoPrimary && !string.IsNullOrWhiteSpace(connectionString))
-        {
-            healthChecks.AddCheck<SqlServerHealthCheck>("sql");
-        }
-
-        services.AddRequestTimeouts(o => o.DefaultPolicy = new RequestTimeoutPolicy
-        {
-            Timeout = TimeSpan.FromSeconds(60),
-            TimeoutStatusCode = StatusCodes.Status408RequestTimeout,
-        });
-
-        services.AddHsts(o =>
-        {
-            o.MaxAge = TimeSpan.FromDays(365);
-            o.IncludeSubDomains = true;
-            o.Preload = true;
-        });
-
-        // NV-04: slice wiring without touching the pipeline order above.
-        // AdminPolicy is owned by nv-05 (login); nv-04 ships the minimal role gate.
-        services.AddAuthorization(o => o.AddPolicy(
-            "AdminPolicy",
-            p => p.RequireAuthenticatedUser().RequireRole("Admin")));
-        services.AddSingleton(TimeProvider.System);
-        services.AddSingleton<IPasswordHasher, Argon2idPasswordHasher>();
-        services.AddScoped<ISDDUsuarioService, SDDUsuarioService>();
-
-        // NV-05: login wiring without touching the pipeline order above.
-        services.Configure<JwtOptions>(configuration.GetSection("Jwt"));
-        services.AddSingleton<IJwtTokenService, JwtTokenService>();
-        services.AddScoped<IAuthService, AuthService>();
-
-        // NV-06: logout revocation without touching the pipeline order above.
-        services.AddSingleton<ITokenRevocationService, TokenRevocationService>();
-
-        // Cache distribuida en memoria (constitución: sin Redis en MVP).
-        services.AddDistributedMemoryCache();
-
-        // Empresa read slice (list/autocomplete/detail) on MongoDB.
-        services.AddSingleton<ApiSDD.Data.MongoDbContext>();
-        services.AddHostedService<ApiSDD.Data.MongoIndexInitializer>();
-        services.AddScoped<ApiSDD.Services.Empresa.IEmpresaService, ApiSDD.Services.Empresa.EmpresaService>();
-        services.AddScoped<ApiSDD.Services.Empresa.IEmpresaSqlService, ApiSDD.Services.Empresa.EmpresaSqlService>();
-        services.AddScoped<ApiSDD.Services.IUsuarioPerfilService, ApiSDD.Services.UsuarioPerfilService>();
-        services.AddScoped<ApiSDD.Services.MedioTransporte.IMedioTransporteService, ApiSDD.Services.MedioTransporte.MedioTransporteService>();
+        ConfigurePersistenceAndServices(services, configuration, environment, isMongoPrimary);
 
         return services;
+    }
 
-        static void AddJwt(IServiceCollection services, IConfiguration configuration)
+    private static void ConfigurePersistenceAndServices(
+            IServiceCollection services,
+            IConfiguration configuration,
+            IHostEnvironment environment,
+            bool isMongoPrimary)
+        {
+            var connectionString = configuration.GetConnectionString("Default");
+            if (!isMongoPrimary && string.IsNullOrWhiteSpace(connectionString))
+            {
+                throw new InvalidOperationException("ConnectionStrings:Default is required (external SQL).");
+            }
+
+            if (!string.IsNullOrWhiteSpace(connectionString))
+            {
+                services.AddDbContext<AppDbContext>(o => o.UseSqlServer(
+                    connectionString,
+                    sql =>
+                    {
+                        sql.EnableRetryOnFailure();
+                        sql.CommandTimeout(60);
+                    }));
+            }
+
+            var keysPath = configuration["DataProtection:KeysPath"];
+            var dataProtection = services.AddDataProtection();
+            if (!string.IsNullOrWhiteSpace(keysPath))
+            {
+                Directory.CreateDirectory(keysPath);
+                dataProtection.PersistKeysToFileSystem(new DirectoryInfo(keysPath));
+            }
+            else if (environment.IsProduction())
+            {
+                throw new InvalidOperationException("DataProtection:KeysPath is required in Production.");
+            }
+
+            var healthChecks = services.AddHealthChecks()
+                .AddCheck<MongoDbHealthCheck>("mongodb")
+                .AddCheck<RedisHealthCheck>("redis")
+                .AddCheck<AssemblyIntegrityCheck>("assembly");
+            if (!isMongoPrimary && !string.IsNullOrWhiteSpace(connectionString))
+            {
+                healthChecks.AddCheck<SqlServerHealthCheck>("sql");
+            }
+
+            services.AddRequestTimeouts(o => o.DefaultPolicy = new RequestTimeoutPolicy
+            {
+                Timeout = TimeSpan.FromSeconds(60),
+                TimeoutStatusCode = StatusCodes.Status408RequestTimeout,
+            });
+
+            services.AddHsts(o =>
+            {
+                o.MaxAge = TimeSpan.FromDays(365);
+                o.IncludeSubDomains = true;
+                o.Preload = true;
+            });
+
+            // NV-04: slice wiring without touching the pipeline order above.
+            services.AddAuthorization(o => o.AddPolicy(
+                "AdminPolicy",
+                p => p.RequireAuthenticatedUser().RequireRole("Admin")));
+            services.AddSingleton(TimeProvider.System);
+            services.AddSingleton<IPasswordHasher, Argon2idPasswordHasher>();
+            services.AddScoped<ISDDUsuarioService, SDDUsuarioService>();
+
+            // NV-05 / NV-06: JWT + Blacklist distribuida Redis (Req. 10 & 15)
+            services.Configure<JwtOptions>(configuration.GetSection("Jwt"));
+            services.AddSingleton<IJwtTokenService, JwtTokenService>();
+            services.AddSingleton<ITokenRevocationService>(sp => new TokenRevocationService(
+                sp.GetRequiredService<IDistributedCache>(),
+                sp.GetRequiredService<TimeProvider>()));
+            services.AddScoped<IEmailNotificationService, EmailNotificationService>();
+
+            var redisCs = configuration["Redis:ConnectionString"];
+            if (!string.IsNullOrWhiteSpace(redisCs)
+                && !redisCs.Contains("REEMPLAZAR", StringComparison.OrdinalIgnoreCase))
+            {
+                services.AddStackExchangeRedisCache(o =>
+                {
+                    o.Configuration = redisCs;
+                    o.InstanceName = "bustrack:";
+                });
+            }
+            else
+            {
+                services.AddDistributedMemoryCache();
+            }
+
+            // Repositorio NoSQL unificado (MongoDB Atlas en nube; almacén en memoria en pruebas aisladas).
+            services.AddSingleton<ApiSDD.Data.MongoDbContext>();
+            services.AddHostedService<ApiSDD.Data.MongoIndexInitializer>();
+            services.AddSingleton<ApiSDD.Data.NoSql.InMemoryBusTrackStore>();
+            services.AddSingleton<ApiSDD.Data.NoSql.MongoBusTrackStore>();
+            services.AddSingleton<ApiSDD.Data.NoSql.IBusTrackNoSqlStore>(sp =>
+            {
+                var mongo = sp.GetRequiredService<ApiSDD.Data.MongoDbContext>();
+                return mongo.IsConfigured
+                    ? sp.GetRequiredService<ApiSDD.Data.NoSql.MongoBusTrackStore>()
+                    : sp.GetRequiredService<ApiSDD.Data.NoSql.InMemoryBusTrackStore>();
+            });
+
+            services.AddScoped<ApiSDD.Services.Empresa.IEmpresaService, ApiSDD.Services.Empresa.EmpresaService>();
+            services.AddScoped<ITransportCatalogService, TransportCatalogService>();
+
+            if (isMongoPrimary)
+            {
+                services.AddScoped<IAuthService, MongoAuthService>();
+                services.AddScoped<IUsuarioPerfilService, MongoUsuarioPerfilService>();
+                services.AddScoped<ApiSDD.Services.Empresa.IEmpresaSqlService, MongoEmpresaService>();
+                services.AddScoped<ApiSDD.Services.MedioTransporte.IMedioTransporteService, MongoMedioTransporteService>();
+            }
+            else
+            {
+                services.AddScoped<IAuthService, AuthService>();
+                services.AddScoped<IUsuarioPerfilService, UsuarioPerfilService>();
+                services.AddScoped<ApiSDD.Services.Empresa.IEmpresaSqlService, ApiSDD.Services.Empresa.EmpresaSqlService>();
+                services.AddScoped<ApiSDD.Services.MedioTransporte.IMedioTransporteService, ApiSDD.Services.MedioTransporte.MedioTransporteService>();
+            }
+        }
+
+    private static void AddJwt(IServiceCollection services, IConfiguration configuration)
         {
             var key = configuration["Jwt:Key"]
                 ?? throw new InvalidOperationException("Jwt:Key is required when UseJwtBearer is enabled.");
@@ -247,12 +295,11 @@ internal static class ServiceCollectionExtensions
                 });
         }
 
-        static void FixedWindow(FixedWindowRateLimiterOptions options, int permits, int minutes)
-        {
-            options.PermitLimit = permits;
-            options.Window = TimeSpan.FromMinutes(minutes);
-            options.QueueLimit = 0;
-            options.AutoReplenishment = true;
-        }
+    private static void FixedWindow(FixedWindowRateLimiterOptions options, int permits, int minutes)
+    {
+        options.PermitLimit = permits;
+        options.Window = TimeSpan.FromMinutes(minutes);
+        options.QueueLimit = 0;
+        options.AutoReplenishment = true;
     }
 }

@@ -37,8 +37,8 @@ jobs:
       - name: Run Unit & Non-Docker Integration/Security Tests
         run: |
           dotnet test UnitTest/UnitTest.csproj -c Release --no-build
-          dotnet test IntegrationTest/IntegrationTest.csproj -c Release --no-build --filter "FullyQualifiedName~HealthTests|FullyQualifiedName~ErrorsTests|FullyQualifiedName~RoutingTests|FullyQualifiedName~EpRoutingTests"
-          dotnet test SecurityTest/SecurityTest.csproj -c Release --no-build --filter "FullyQualifiedName~HeadersTests|FullyQualifiedName~AssemblyIntegrityTests"
+          dotnet test IntegrationTest/IntegrationTest.csproj -c Release --no-build --filter "FullyQualifiedName~HealthTests|FullyQualifiedName~ErrorsTests|FullyQualifiedName~RoutingTests|FullyQualifiedName~EpRoutingTests|FullyQualifiedName~CoreEndpointsIntegrationTests"
+          dotnet test SecurityTest/SecurityTest.csproj -c Release --no-build --filter "FullyQualifiedName~HeadersTests|FullyQualifiedName~AssemblyIntegrityTests|FullyQualifiedName~NoSqlSecurityTests"
 
       - name: SDD & Critic Guardrails
         run: |
@@ -72,11 +72,12 @@ jobs:
           echo "ACR_USERNAME=$(az acr credential show -n $ACR_NAME --query username -o tsv)" >> $GITHUB_ENV
           echo "ACR_PASSWORD=$(az acr credential show -n $ACR_NAME --query passwords[0].value -o tsv)" >> $GITHUB_ENV
 
-      - name: Build and push image to ACR (SemVer 0.2.0)
+      - name: Build and push image to ACR (SemVer 0.4.0)
         run: |
+          echo "::add-mask::$ACR_PASSWORD"
           echo "$ACR_PASSWORD" | docker login "$ACR_LOGIN_SERVER" --username "$ACR_USERNAME" --password-stdin
           SHORT_SHA="${GITHUB_SHA::12}"
-          TAG="${ACR_LOGIN_SERVER%/}/bustrack-api:0.2.0-${SHORT_SHA}"
+          TAG="${ACR_LOGIN_SERVER%/}/bustrack-api:0.4.0-${SHORT_SHA}"
           TAG_LATEST="${ACR_LOGIN_SERVER%/}/bustrack-api:latest"
           docker build -t "$TAG" -t "$TAG_LATEST" -f Dockerfile .
           docker push "$TAG"
@@ -149,6 +150,6 @@ jobs:
           [ "$HEALTHY" -eq 1 ] || { az container logs -g rg-bustrack-ncus -n bustrack-api || true; exit 1; }
           READY_CODE=$(curl -s -o /tmp/ready.json -w "%{http_code}" --max-time 15 "$API_URL/health/ready" || echo "000")
           cat /tmp/ready.json
-          [ "$READY_CODE" -eq 200 ] || { echo "Error: /health/ready retornó HTTP $READY_CODE"; exit 1; }
-          grep -q '"status":"Healthy"' /tmp/ready.json || { echo "Error: /health/ready no está Healthy"; exit 1; }
+          [ "$READY_CODE" -eq 200 ] || { az container logs -g rg-bustrack-ncus -n bustrack-api --tail 40 || true; echo "Error: /health/ready retornó HTTP $READY_CODE"; exit 1; }
+          grep -q '"status":"Healthy"' /tmp/ready.json || { az container logs -g rg-bustrack-ncus -n bustrack-api --tail 40 || true; echo "Error: /health/ready no está Healthy"; exit 1; }
           curl -sf --max-time 10 "$API_URL/api/v1/ping"

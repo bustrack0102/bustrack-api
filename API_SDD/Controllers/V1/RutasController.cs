@@ -1,3 +1,4 @@
+using ApiSDD.Services.NoSql;
 using Asp.Versioning;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -6,133 +7,77 @@ using Microsoft.AspNetCore.RateLimiting;
 namespace ApiSDD.Controllers.V1;
 
 /// <summary>
-/// Controlador de rutas de transporte público (Specs 19 y 20).
+/// Controlador NoSQL de rutas de transporte público (EP-RP-04 a EP-RP-09 + EP-HT).
 /// </summary>
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/rutas")]
 public sealed class RutasController : ControllerBase
 {
-    private static readonly IReadOnlyList<RutaItemResponse> SeedRutas =
-    [
-        new(
-            Guid.Parse("10000000-0000-0000-0000-000000000001"),
-            "R-01",
-            "Pachuca – Tula Directo Express",
-            "Autotransportes Valle del Mezquital",
-            "Autobús Directo",
-            "Central de Autobuses de Pachuca",
-            "Central de Autobuses de Tula",
-            65.00m,
-            "05:00",
-            "22:30",
-            15,
-            "Lunes a Domingo",
-            true
-        ),
-        new(
-            Guid.Parse("10000000-0000-0000-0000-000000000002"),
-            "R-02",
-            "Tula – Tepeji Centro Metropolitano",
-            "Autotransportes Tepeji del Río",
-            "Microbús Urbano",
-            "Tula Centro (Plaza Juárez)",
-            "Tepeji Centro (Jardín Municipal)",
-            22.00m,
-            "05:30",
-            "22:00",
-            10,
-            "Lunes a Domingo",
-            true
-        ),
-        new(
-            Guid.Parse("10000000-0000-0000-0000-000000000003"),
-            "R-03",
-            "Tula – Refinería Miguel Hidalgo",
-            "Autotransportes Valle del Mezquital",
-            "Microbús Urbano",
-            "Central de Autobuses de Tula",
-            "Puerta 1 Refinería",
-            15.00m,
-            "06:00",
-            "21:00",
-            12,
-            "Lunes a Sábado",
-            true
-        ),
-        new(
-            Guid.Parse("10000000-0000-0000-0000-000000000004"),
-            "R-04",
-            "Pachuca – Mineral del Monte Turístico",
-            "Flecha Roja Hidalgo",
-            "Autobús Directo",
-            "Plaza Juárez Pachuca",
-            "Monumento al Minero Real del Monte",
-            30.00m,
-            "06:30",
-            "20:00",
-            20,
-            "Lunes a Domingo",
-            true
-        )
-    ];
+    private readonly ITransportCatalogService _catalog;
 
-    private static readonly IReadOnlyList<ParadaItemResponse> SeedParadas =
-    [
-        new("P-01", "Central de Autobuses de Pachuca", 20.1012, -98.7523, 1),
-        new("P-02", "Plaza Juárez Pachuca", 20.1245, -98.7321, 2),
-        new("P-03", "Puente Actopan Troncal", 20.2687, -98.9431, 3),
-        new("P-04", "Crucero Cruz Azul", 20.0345, -99.2891, 4),
-        new("P-05", "Central de Autobuses de Tula", 20.0512, -99.3421, 5)
-    ];
+    public RutasController(ITransportCatalogService catalog)
+    {
+        _catalog = catalog ?? throw new ArgumentNullException(nameof(catalog));
+    }
 
-    // GET /api/v1/rutas
+    // GET /api/v1/rutas (EP-RP-06)
     [HttpGet]
     [AllowAnonymous]
     [EnableRateLimiting("Global")]
     [ResponseCache(Duration = 60, Location = ResponseCacheLocation.Any)]
-    public IActionResult GetRutas(
+    public async Task<IActionResult> GetRutas(
         [FromQuery] string? empresa = null,
         [FromQuery] string? destino = null,
         [FromQuery] int pagina = 1,
-        [FromQuery] int tamanoPagina = 20)
+        [FromQuery] int tamanoPagina = 20,
+        CancellationToken cancellationToken = default)
     {
-        var query = SeedRutas.AsEnumerable();
-
-        if (!string.IsNullOrWhiteSpace(empresa))
-        {
-            query = query.Where(r => r.Empresa.Contains(empresa.Trim(), StringComparison.OrdinalIgnoreCase));
-        }
-
-        if (!string.IsNullOrWhiteSpace(destino))
-        {
-            var dest = destino.Trim();
-            query = query.Where(r => r.ParadaDestino.Contains(dest, StringComparison.OrdinalIgnoreCase));
-        }
-
-        var filteredList = query.ToList();
-        var total = filteredList.Count;
-        var p = Math.Max(1, pagina);
-        var s = Math.Clamp(tamanoPagina, 1, 100);
-        var items = filteredList.Skip((p - 1) * s).Take(s).ToList();
-
+        var result = await _catalog.ListRutasAsync(empresa, destino, pagina, tamanoPagina, cancellationToken)
+            .ConfigureAwait(false);
         Response.Headers.Append("Cache-Control", "public, max-age=60");
-        return Ok(new
-        {
-            totalRegistros = total,
-            paginaActual = p,
-            tamanoPagina = s,
-            items
-        });
+        return Ok(result);
     }
 
-    // GET /api/v1/rutas/{id}
+    // GET /api/v1/rutas/buscar (EP-RP-04)
+    [HttpGet("buscar")]
+    [AllowAnonymous]
+    [EnableRateLimiting("Global")]
+    public async Task<IActionResult> Buscar(
+        [FromQuery] string? origen = null,
+        [FromQuery] string? destino = null,
+        [FromQuery] string? municipio = null,
+        [FromQuery] string? medioTransporte = null,
+        [FromQuery] decimal? tarifaMax = null,
+        [FromQuery] string? ordenarPor = null,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await _catalog.SearchRutasAsync(
+            origen, destino, municipio, medioTransporte, tarifaMax, ordenarPor, cancellationToken)
+            .ConfigureAwait(false);
+        return Ok(result);
+    }
+
+    // GET /api/v1/rutas/autocompletar (EP-RP-05)
+    [HttpGet("autocompletar")]
+    [AllowAnonymous]
+    [EnableRateLimiting("Global")]
+    public async Task<IActionResult> Autocompletar(
+        [FromQuery] string q = "",
+        [FromQuery] int limite = 10,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await _catalog.AutocompleteRutasAsync(q, limite, cancellationToken).ConfigureAwait(false);
+        return Ok(result);
+    }
+
+    // GET /api/v1/rutas/{id} (EP-RP-07)
     [HttpGet("{id:guid}")]
     [AllowAnonymous]
     [EnableRateLimiting("Global")]
-    public IActionResult GetRutaPorId([FromRoute] Guid id)
+    public async Task<IActionResult> GetRutaPorId([FromRoute] Guid id, CancellationToken cancellationToken)
     {
-        var ruta = SeedRutas.FirstOrDefault(r => r.Id == id);
+        var ruta = await _catalog.GetRutaByIdAsync(id, cancellationToken).ConfigureAwait(false);
         if (ruta is null)
         {
             return NotFound(new { error = "Ruta no encontrada.", status = 404 });
@@ -141,48 +86,70 @@ public sealed class RutasController : ControllerBase
         return Ok(ruta);
     }
 
-    // GET /api/v1/rutas/{id}/paradas (Spec 20)
+    // GET /api/v1/rutas/{id}/paradas (EP-RP-08)
     [HttpGet("{id:guid}/paradas")]
     [AllowAnonymous]
     [EnableRateLimiting("Global")]
-    public IActionResult GetParadasPorRuta([FromRoute] Guid id)
+    public async Task<IActionResult> GetParadasPorRuta([FromRoute] Guid id, CancellationToken cancellationToken)
     {
-        var ruta = SeedRutas.FirstOrDefault(r => r.Id == id);
+        var result = await _catalog.GetRutaParadasAsync(id, cancellationToken).ConfigureAwait(false);
+        if (result is null)
+        {
+            return NotFound(new { error = "Ruta no encontrada.", status = 404 });
+        }
+
+        return Ok(result);
+    }
+
+    // GET /api/v1/rutas/{id}/geometria (EP-RP-09)
+    [HttpGet("{id:guid}/geometria")]
+    [AllowAnonymous]
+    [EnableRateLimiting("Global")]
+    public async Task<IActionResult> GetGeometria([FromRoute] Guid id, CancellationToken cancellationToken)
+    {
+        var result = await _catalog.GetRutaGeometriaAsync(id, cancellationToken).ConfigureAwait(false);
+        if (result is null)
+        {
+            return NotFound(new { error = "Ruta no encontrada.", status = 404 });
+        }
+
+        return Ok(result);
+    }
+
+    // GET /api/v1/rutas/{id}/horarios (spec 21)
+    [HttpGet("{id:guid}/horarios")]
+    [AllowAnonymous]
+    [EnableRateLimiting("Global")]
+    public async Task<IActionResult> GetHorariosRuta(
+        [FromRoute] Guid id,
+        [FromQuery] string? dia = null,
+        CancellationToken cancellationToken = default)
+    {
+        var ruta = await _catalog.GetRutaByIdAsync(id, cancellationToken).ConfigureAwait(false);
         if (ruta is null)
         {
             return NotFound(new { error = "Ruta no encontrada.", status = 404 });
         }
 
-        return Ok(new
+        var items = await _catalog.ListHorariosAsync(id, dia, cancellationToken).ConfigureAwait(false);
+        return Ok(items);
+    }
+
+    // GET /api/v1/rutas/{id}/tarifas (spec 22)
+    [HttpGet("{id:guid}/tarifas")]
+    [AllowAnonymous]
+    [EnableRateLimiting("Global")]
+    public async Task<IActionResult> GetTarifasRuta(
+        [FromRoute] Guid id,
+        CancellationToken cancellationToken = default)
+    {
+        var ruta = await _catalog.GetRutaByIdAsync(id, cancellationToken).ConfigureAwait(false);
+        if (ruta is null)
         {
-            rutaId = id,
-            rutaNombre = ruta.Nombre,
-            totalParadas = SeedParadas.Count,
-            paradas = SeedParadas
-        });
+            return NotFound(new { error = "Ruta no encontrada.", status = 404 });
+        }
+
+        var items = await _catalog.ListTarifasAsync(id, true, cancellationToken).ConfigureAwait(false);
+        return Ok(items);
     }
 }
-
-public sealed record RutaItemResponse(
-    Guid Id,
-    string Codigo,
-    string Nombre,
-    string Empresa,
-    string MedioTransporte,
-    string ParadaOrigen,
-    string ParadaDestino,
-    decimal TarifaBaseMxn,
-    string PrimerHorario,
-    string UltimoHorario,
-    int FrecuenciaMinutos,
-    string DiasOperacion,
-    bool Activo
-);
-
-public sealed record ParadaItemResponse(
-    string ParadaId,
-    string Nombre,
-    double Latitud,
-    double Longitud,
-    int OrdenSecuencia
-);

@@ -102,10 +102,9 @@ resource "azurerm_container_app" "ml" {
   }
 
   ingress {
-    external_enabled           = false
-    allow_insecure_connections = true
-    target_port                = 8000
-    transport                  = "auto"
+    external_enabled = false
+    target_port      = 8000
+    transport        = "auto"
 
     traffic_weight {
       latest_revision = true
@@ -121,7 +120,7 @@ resource "azurerm_container_app" "ml" {
       name   = "bustrack-ml"
       image  = "${local.acr_server}/bustrack-ml:latest"
       cpu    = 0.5
-      memory = "1Gi"
+      memory = "1.0Gi"
 
       env {
         name  = "ENVIRONMENT"
@@ -176,10 +175,9 @@ resource "azurerm_container_app" "genai" {
   }
 
   ingress {
-    external_enabled           = false
-    allow_insecure_connections = true
-    target_port                = 8000
-    transport                  = "auto"
+    external_enabled = false
+    target_port      = 8000
+    transport        = "auto"
 
     traffic_weight {
       latest_revision = true
@@ -240,10 +238,9 @@ resource "azurerm_container_app" "landing" {
   }
 
   ingress {
-    external_enabled           = true
-    allow_insecure_connections = false
-    target_port                = 8080
-    transport                  = "auto"
+    external_enabled = true
+    target_port      = 8080
+    transport        = "auto"
 
     traffic_weight {
       latest_revision = true
@@ -319,10 +316,9 @@ resource "azurerm_container_app" "api" {
   }
 
   ingress {
-    external_enabled           = true
-    allow_insecure_connections = false
-    target_port                = 8000
-    transport                  = "auto"
+    external_enabled = true
+    target_port      = 8000
+    transport        = "auto"
 
     traffic_weight {
       latest_revision = true
@@ -417,12 +413,12 @@ resource "azurerm_container_app" "api" {
 
       env {
         name  = "Services__MlBaseUrl"
-        value = "http://${azurerm_container_app.ml.ingress[0].fqdn}/"
+        value = "https://${azurerm_container_app.ml.ingress[0].fqdn}/"
       }
 
       env {
         name  = "Services__GenAiBaseUrl"
-        value = "http://${azurerm_container_app.genai.ingress[0].fqdn}/"
+        value = "https://${azurerm_container_app.genai.ingress[0].fqdn}/"
       }
 
       env {

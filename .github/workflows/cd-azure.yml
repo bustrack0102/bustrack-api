@@ -72,12 +72,12 @@ jobs:
           echo "ACR_USERNAME=$(az acr credential show -n $ACR_NAME --query username -o tsv)" >> $GITHUB_ENV
           echo "ACR_PASSWORD=$(az acr credential show -n $ACR_NAME --query passwords[0].value -o tsv)" >> $GITHUB_ENV
 
-      - name: Build and push image to ACR (SemVer 0.8.0)
+      - name: Build and push image to ACR (SemVer 0.9.0)
         run: |
           echo "::add-mask::$ACR_PASSWORD"
           echo "$ACR_PASSWORD" | docker login "$ACR_LOGIN_SERVER" --username "$ACR_USERNAME" --password-stdin
           SHORT_SHA="${GITHUB_SHA::12}"
-          TAG="${ACR_LOGIN_SERVER%/}/bustrack-api:0.8.0-${SHORT_SHA}"
+          TAG="${ACR_LOGIN_SERVER%/}/bustrack-api:0.9.0-${SHORT_SHA}"
           TAG_LATEST="${ACR_LOGIN_SERVER%/}/bustrack-api:latest"
           docker build -t "$TAG" -t "$TAG_LATEST" -f Dockerfile .
           docker push "$TAG"

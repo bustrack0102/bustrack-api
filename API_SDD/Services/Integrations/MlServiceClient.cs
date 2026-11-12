@@ -2,6 +2,7 @@ using System.Net.Http.Json;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using ApiSDD.Common;
 using ApiSDD.Dtos.Intelligence;
 
 namespace ApiSDD.Services.Integrations;
@@ -50,9 +51,8 @@ internal sealed class MlServiceClient : IMlServiceClient
         IReadOnlyList<SensorMuestraDto> muestras,
         CancellationToken ct)
     {
-        var baseUrl = _configuration["Services:MlBaseUrl"];
-        if (!string.IsNullOrWhiteSpace(baseUrl)
-            && !baseUrl.Contains("REEMPLAZAR", StringComparison.OrdinalIgnoreCase)
+        var baseUrl = ConfigurationSanitizer.CleanSecret(_configuration["Services:MlBaseUrl"]);
+        if (ConfigurationSanitizer.HasUsableValue(baseUrl)
             && Uri.TryCreate(baseUrl, UriKind.Absolute, out var baseUri))
         {
             var upstream = await TryCallRemoteMlAsync(
@@ -86,12 +86,7 @@ internal sealed class MlServiceClient : IMlServiceClient
             var client = _httpFactory.CreateClient("MlService");
             var targetUri = new Uri(baseUri, "inference");
             using var msg = new HttpRequestMessage(HttpMethod.Post, targetUri);
-            var internalKey = _configuration["InternalService:Key"];
-            if (!string.IsNullOrWhiteSpace(internalKey)
-                && !internalKey.Contains("REEMPLAZAR", StringComparison.OrdinalIgnoreCase))
-            {
-                msg.Headers.Add("X-Internal-Key", internalKey);
-            }
+            ConfigurationSanitizer.AttachInternalKeyHeader(msg, _configuration);
 
             msg.Content = JsonContent.Create(new MlInferenceUpstreamRequest(
                 viajeId,

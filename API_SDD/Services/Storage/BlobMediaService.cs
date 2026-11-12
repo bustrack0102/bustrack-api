@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.RegularExpressions;
+using ApiSDD.Common;
 using ApiSDD.Services.Moderation;
 using Azure;
 using Azure.Storage.Blobs;
@@ -73,9 +74,8 @@ internal sealed partial class BlobMediaService : IBlobMediaService
             CultureInfo.InvariantCulture,
             $"{safeCategory}/{now:yyyy}/{now:MM}/{Guid.NewGuid():N}{ext}");
 
-        var blobCs = _configuration["AzureStorage:ConnectionString"];
-        if (!string.IsNullOrWhiteSpace(blobCs)
-            && !blobCs.Contains("REEMPLAZAR", StringComparison.OrdinalIgnoreCase))
+        var blobCs = ConfigurationSanitizer.CleanSecret(_configuration["AzureStorage:ConnectionString"]);
+        if (ConfigurationSanitizer.HasUsableValue(blobCs))
         {
             var uploadedUrl = await TryUploadToAzureBlobAsync(
                 blobCs,
@@ -116,7 +116,8 @@ internal sealed partial class BlobMediaService : IBlobMediaService
     {
         try
         {
-            var containerName = _configuration["AzureStorage:MediaContainer"] ?? DefaultContainer;
+            var configuredContainer = ConfigurationSanitizer.CleanSecret(_configuration["AzureStorage:MediaContainer"]);
+            var containerName = string.IsNullOrWhiteSpace(configuredContainer) ? DefaultContainer : configuredContainer;
             var service = new BlobServiceClient(connectionString);
             var container = service.GetBlobContainerClient(containerName);
             await container.CreateIfNotExistsAsync(PublicAccessType.Blob, cancellationToken: ct).ConfigureAwait(false);
@@ -130,7 +131,7 @@ internal sealed partial class BlobMediaService : IBlobMediaService
             };
             await blob.UploadAsync(ms, new BlobUploadOptions { HttpHeaders = headers }, ct).ConfigureAwait(false);
 
-            var cdnBase = _configuration["AzureStorage:CdnBaseUrl"];
+            var cdnBase = ConfigurationSanitizer.CleanSecret(_configuration["AzureStorage:CdnBaseUrl"]);
             if (!string.IsNullOrWhiteSpace(cdnBase)
                 && Uri.TryCreate(cdnBase, UriKind.Absolute, out var cdnUri)
                 && cdnUri.Scheme == Uri.UriSchemeHttps)

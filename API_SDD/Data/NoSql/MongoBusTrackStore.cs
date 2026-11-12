@@ -1,3 +1,7 @@
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using MongoDB.Bson;
+using MongoDB.Bson.Serialization;
 using MongoDB.Driver;
 using MongoDB.Driver.GeoJsonObjectModel;
 
@@ -6,17 +10,31 @@ namespace ApiSDD.Data.NoSql;
 /// <summary>
 /// Implementación MongoDB Atlas de IBusTrackNoSqlStore con consultas BSON y geoespaciales ($nearSphere).
 /// </summary>
-internal sealed class MongoBusTrackStore : IBusTrackNoSqlStore, IDisposable
+internal sealed partial class MongoBusTrackStore : IBusTrackNoSqlStore, IDisposable
 {
     private readonly MongoDbContext _mongo;
+    private readonly ILogger<MongoBusTrackStore> _logger;
     private readonly SemaphoreSlim _seedLock = new(1, 1);
     private volatile bool _seeded;
 
-    public MongoBusTrackStore(MongoDbContext mongo)
+    public MongoBusTrackStore(MongoDbContext mongo, ILogger<MongoBusTrackStore>? logger = null)
     {
         _mongo = mongo ?? throw new ArgumentNullException(nameof(mongo));
+        _logger = logger ?? NullLogger<MongoBusTrackStore>.Instance;
         CatalogUpdatedAtUtc = DateTime.UtcNow;
     }
+
+    [LoggerMessage(
+        EventId = 1002,
+        Level = LogLevel.Warning,
+        Message = "Omitiendo documento heredado incompatible en colección '{CollectionName}'.")]
+    private static partial void LogLegacyDocSkipped(ILogger logger, string collectionName, Exception ex);
+
+    [LoggerMessage(
+        EventId = 1003,
+        Level = LogLevel.Warning,
+        Message = "Consulta geoespacial $nearSphere en 'paradas' sin índice activo; aplicando filtrado Haversine de respaldo.")]
+    private static partial void LogGeoNearFallback(ILogger logger, Exception ex);
 
     public void Dispose() => _seedLock.Dispose();
 
@@ -59,50 +77,68 @@ internal sealed class MongoBusTrackStore : IBusTrackNoSqlStore, IDisposable
                 return;
             }
 
-            if (await Roles.CountDocumentsAsync(Builders<RolDoc>.Filter.Empty, cancellationToken: ct).ConfigureAwait(false) == 0)
-            {
-                await Roles.InsertManyAsync(BusTrackSeedData.Roles(), cancellationToken: ct).ConfigureAwait(false);
-            }
+            await EnsureSeedCollectionAsync(
+                Roles,
+                Builders<RolDoc>.Filter.Eq(x => x.Nombre, "Usuario"),
+                BusTrackSeedData.Roles(),
+                seed => Builders<RolDoc>.Filter.Eq(x => x.Id, seed.Id),
+                ct).ConfigureAwait(false);
 
-            if (await Medios.CountDocumentsAsync(Builders<MedioTransporteDoc>.Filter.Empty, cancellationToken: ct).ConfigureAwait(false) == 0)
-            {
-                await Medios.InsertManyAsync(BusTrackSeedData.MediosTransporte(), cancellationToken: ct).ConfigureAwait(false);
-            }
+            await EnsureSeedCollectionAsync(
+                Medios,
+                Builders<MedioTransporteDoc>.Filter.Eq(x => x.Clave, "BUS-DIR"),
+                BusTrackSeedData.MediosTransporte(),
+                seed => Builders<MedioTransporteDoc>.Filter.Eq(x => x.Id, seed.Id),
+                ct).ConfigureAwait(false);
 
-            if (await Empresas.CountDocumentsAsync(Builders<EmpresaDoc>.Filter.Empty, cancellationToken: ct).ConfigureAwait(false) == 0)
-            {
-                await Empresas.InsertManyAsync(BusTrackSeedData.Empresas(), cancellationToken: ct).ConfigureAwait(false);
-            }
+            await EnsureSeedCollectionAsync(
+                Empresas,
+                Builders<EmpresaDoc>.Filter.Eq(x => x.Id, BusTrackSeedData.EmpresaAvmId),
+                BusTrackSeedData.Empresas(),
+                seed => Builders<EmpresaDoc>.Filter.Eq(x => x.Id, seed.Id),
+                ct).ConfigureAwait(false);
 
-            if (await Paradas.CountDocumentsAsync(Builders<ParadaDoc>.Filter.Empty, cancellationToken: ct).ConfigureAwait(false) == 0)
-            {
-                await Paradas.InsertManyAsync(BusTrackSeedData.Paradas(), cancellationToken: ct).ConfigureAwait(false);
-            }
+            await EnsureSeedCollectionAsync(
+                Paradas,
+                Builders<ParadaDoc>.Filter.Eq(x => x.Id, "PAR-01"),
+                BusTrackSeedData.Paradas(),
+                seed => Builders<ParadaDoc>.Filter.Eq(x => x.Id, seed.Id),
+                ct).ConfigureAwait(false);
 
-            if (await Rutas.CountDocumentsAsync(Builders<RutaDoc>.Filter.Empty, cancellationToken: ct).ConfigureAwait(false) == 0)
-            {
-                await Rutas.InsertManyAsync(BusTrackSeedData.Rutas(), cancellationToken: ct).ConfigureAwait(false);
-            }
+            await EnsureSeedCollectionAsync(
+                Rutas,
+                Builders<RutaDoc>.Filter.Eq(x => x.Id, BusTrackSeedData.Ruta1Id),
+                BusTrackSeedData.Rutas(),
+                seed => Builders<RutaDoc>.Filter.Eq(x => x.Id, seed.Id),
+                ct).ConfigureAwait(false);
 
-            if (await Horarios.CountDocumentsAsync(Builders<HorarioDoc>.Filter.Empty, cancellationToken: ct).ConfigureAwait(false) == 0)
-            {
-                await Horarios.InsertManyAsync(BusTrackSeedData.Horarios(), cancellationToken: ct).ConfigureAwait(false);
-            }
+            await EnsureSeedCollectionAsync(
+                Horarios,
+                Builders<HorarioDoc>.Filter.Eq(x => x.Id, "HOR-01"),
+                BusTrackSeedData.Horarios(),
+                seed => Builders<HorarioDoc>.Filter.Eq(x => x.Id, seed.Id),
+                ct).ConfigureAwait(false);
 
-            if (await Tarifas.CountDocumentsAsync(Builders<TarifaDoc>.Filter.Empty, cancellationToken: ct).ConfigureAwait(false) == 0)
-            {
-                await Tarifas.InsertManyAsync(BusTrackSeedData.Tarifas(), cancellationToken: ct).ConfigureAwait(false);
-            }
+            await EnsureSeedCollectionAsync(
+                Tarifas,
+                Builders<TarifaDoc>.Filter.Eq(x => x.Id, "TAR-01"),
+                BusTrackSeedData.Tarifas(),
+                seed => Builders<TarifaDoc>.Filter.Eq(x => x.Id, seed.Id),
+                ct).ConfigureAwait(false);
 
-            if (await Destinos.CountDocumentsAsync(Builders<DestinoDoc>.Filter.Empty, cancellationToken: ct).ConfigureAwait(false) == 0)
-            {
-                await Destinos.InsertManyAsync(BusTrackSeedData.Destinos(), cancellationToken: ct).ConfigureAwait(false);
-            }
+            await EnsureSeedCollectionAsync(
+                Destinos,
+                Builders<DestinoDoc>.Filter.Eq(x => x.Id, "DES-01"),
+                BusTrackSeedData.Destinos(),
+                seed => Builders<DestinoDoc>.Filter.Eq(x => x.Id, seed.Id),
+                ct).ConfigureAwait(false);
 
-            if (await Fuentes.CountDocumentsAsync(Builders<FuenteDatoDoc>.Filter.Empty, cancellationToken: ct).ConfigureAwait(false) == 0)
-            {
-                await Fuentes.InsertManyAsync(BusTrackSeedData.FuentesDatos(), cancellationToken: ct).ConfigureAwait(false);
-            }
+            await EnsureSeedCollectionAsync(
+                Fuentes,
+                Builders<FuenteDatoDoc>.Filter.Eq(x => x.Id, BusTrackSeedData.FuenteOficialId),
+                BusTrackSeedData.FuentesDatos(),
+                seed => Builders<FuenteDatoDoc>.Filter.Eq(x => x.Id, seed.Id),
+                ct).ConfigureAwait(false);
 
             _seeded = true;
         }
@@ -110,6 +146,62 @@ internal sealed class MongoBusTrackStore : IBusTrackNoSqlStore, IDisposable
         {
             _seedLock.Release();
         }
+    }
+
+    private static async Task EnsureSeedCollectionAsync<TDoc>(
+        IMongoCollection<TDoc> collection,
+        FilterDefinition<TDoc> probeFilter,
+        IReadOnlyList<TDoc> seeds,
+        Func<TDoc, FilterDefinition<TDoc>> idFilter,
+        CancellationToken ct)
+    {
+        if (seeds.Count == 0
+            || await collection.CountDocumentsAsync(probeFilter, cancellationToken: ct).ConfigureAwait(false) > 0)
+        {
+            return;
+        }
+
+        var writes = seeds
+            .Select(seed => (WriteModel<TDoc>)new ReplaceOneModel<TDoc>(idFilter(seed), seed) { IsUpsert = true })
+            .ToList();
+        await collection.BulkWriteAsync(writes, new BulkWriteOptions { IsOrdered = false }, ct).ConfigureAwait(false);
+    }
+
+    private async Task<IReadOnlyList<TDoc>> ListCompatibleAsync<TDoc>(
+        string collectionName,
+        FilterDefinition<BsonDocument>? filter,
+        CancellationToken ct)
+    {
+        var raw = await _mongo.RawCollection(collectionName)
+            .Find(filter ?? Builders<BsonDocument>.Filter.Empty)
+            .ToListAsync(ct)
+            .ConfigureAwait(false);
+
+        return DeserializeCompatible<TDoc>(raw, collectionName, _logger);
+    }
+
+    internal static IReadOnlyList<TDoc> DeserializeCompatible<TDoc>(
+        IEnumerable<BsonDocument> rawDocs,
+        string collectionName,
+        ILogger? logger = null)
+    {
+        var items = new List<TDoc>();
+        foreach (var rawDoc in rawDocs)
+        {
+            try
+            {
+                items.Add(BsonSerializer.Deserialize<TDoc>(rawDoc));
+            }
+            catch (Exception ex) when (ex is FormatException or BsonSerializationException)
+            {
+                if (logger is not null)
+                {
+                    LogLegacyDocSkipped(logger, collectionName, ex);
+                }
+            }
+        }
+
+        return items;
     }
 
     public async Task<UsuarioDoc?> GetUsuarioByEmailAsync(string emailNormalized, CancellationToken ct) =>
@@ -220,7 +312,7 @@ internal sealed class MongoBusTrackStore : IBusTrackNoSqlStore, IDisposable
     public async Task<IReadOnlyList<EmpresaDoc>> ListEmpresasAsync(CancellationToken ct)
     {
         await EnsureRoleSeededAsync(ct).ConfigureAwait(false);
-        return await Empresas.Find(Builders<EmpresaDoc>.Filter.Empty).ToListAsync(ct).ConfigureAwait(false);
+        return await ListCompatibleAsync<EmpresaDoc>("empresas", null, ct).ConfigureAwait(false);
     }
 
     public async Task<EmpresaDoc?> GetEmpresaByIdAsync(Guid id, CancellationToken ct)
@@ -238,7 +330,7 @@ internal sealed class MongoBusTrackStore : IBusTrackNoSqlStore, IDisposable
     public async Task<IReadOnlyList<MedioTransporteDoc>> ListMediosTransporteAsync(CancellationToken ct)
     {
         await EnsureRoleSeededAsync(ct).ConfigureAwait(false);
-        return await Medios.Find(Builders<MedioTransporteDoc>.Filter.Empty).ToListAsync(ct).ConfigureAwait(false);
+        return await ListCompatibleAsync<MedioTransporteDoc>("mediosTransporte", null, ct).ConfigureAwait(false);
     }
 
     public async Task<MedioTransporteDoc?> GetMedioByIdAsync(int id, CancellationToken ct) =>
@@ -268,7 +360,7 @@ internal sealed class MongoBusTrackStore : IBusTrackNoSqlStore, IDisposable
     public async Task<IReadOnlyList<RutaDoc>> ListRutasAsync(CancellationToken ct)
     {
         await EnsureRoleSeededAsync(ct).ConfigureAwait(false);
-        return await Rutas.Find(Builders<RutaDoc>.Filter.Empty).ToListAsync(ct).ConfigureAwait(false);
+        return await ListCompatibleAsync<RutaDoc>("rutas", null, ct).ConfigureAwait(false);
     }
 
     public async Task<RutaDoc?> GetRutaByIdAsync(Guid id, CancellationToken ct)
@@ -295,11 +387,27 @@ internal sealed class MongoBusTrackStore : IBusTrackNoSqlStore, IDisposable
     public async Task<IReadOnlyList<(ParadaDoc Parada, double DistanciaKm)>> FindParadasNearAsync(double lat, double lon, double radioKm, CancellationToken ct)
     {
         await EnsureRoleSeededAsync(ct).ConfigureAwait(false);
-        var point = GeoJson.Point(GeoJson.Geographic(lon, lat));
-        var filter = Builders<ParadaDoc>.Filter.And(
-            Builders<ParadaDoc>.Filter.Eq(p => p.Activo, true),
-            Builders<ParadaDoc>.Filter.NearSphere("ubicacion", point, radioKm * 1000.0));
-        var hits = await Paradas.Find(filter).ToListAsync(ct).ConfigureAwait(false);
+        IReadOnlyList<ParadaDoc> hits;
+        try
+        {
+            var point = GeoJson.Point(GeoJson.Geographic(lon, lat));
+            var filter = Builders<ParadaDoc>.Filter.And(
+                Builders<ParadaDoc>.Filter.Eq(p => p.Activo, true),
+                Builders<ParadaDoc>.Filter.NearSphere("ubicacion", point, radioKm * 1000.0));
+            hits = await Paradas.Find(filter).ToListAsync(ct).ConfigureAwait(false);
+        }
+        catch (MongoCommandException ex) when (ex.Code is 27 or 291 || ex.Message.Contains("geoNear", StringComparison.OrdinalIgnoreCase))
+        {
+            LogGeoNearFallback(_logger, ex);
+            var active = await ListCompatibleAsync<ParadaDoc>(
+                "paradas",
+                Builders<BsonDocument>.Filter.Eq("activo", true),
+                ct).ConfigureAwait(false);
+            hits = active
+                .Where(p => GeoMath.DistanceKm(lat, lon, p.Ubicacion.Latitud, p.Ubicacion.Longitud) <= radioKm)
+                .ToList();
+        }
+
         return hits
             .Select(p => (p, GeoMath.DistanceKm(lat, lon, p.Ubicacion.Latitud, p.Ubicacion.Longitud)))
             .OrderBy(x => x.Item2)

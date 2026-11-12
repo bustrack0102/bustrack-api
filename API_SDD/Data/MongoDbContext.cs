@@ -3,8 +3,8 @@
 // La cadena de conexión se lee desde configuración (MongoDb:ConnectionString).
 // Nunca se almacena ni dispone antes de tiempo: un cliente singleton comparte el pool.
 // ---------------------------------------------------------------------------
-using System.Globalization;
 using System.Threading;
+using ApiSDD.Common;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization;
 using MongoDB.Bson.Serialization.Attributes;
@@ -50,9 +50,7 @@ public sealed class MongoDbContext : IDisposable
         ArgumentNullException.ThrowIfNull(configuration);
         var rawConnectionString = configuration["MongoDb:ConnectionString"];
         var connectionString = SanitizeConnectionString(rawConnectionString);
-        if (string.IsNullOrWhiteSpace(connectionString)
-            || connectionString.Contains("REEMPLAZAR", StringComparison.OrdinalIgnoreCase)
-            || connectionString.Contains("EXTERNA", StringComparison.OrdinalIgnoreCase))
+        if (!ConfigurationSanitizer.HasUsableValue(connectionString, "EXTERNA"))
         {
             IsConfigured = false;
             return;
@@ -82,35 +80,8 @@ public sealed class MongoDbContext : IDisposable
         }
     }
 
-    internal static string SanitizeConnectionString(string? raw)
-    {
-        if (string.IsNullOrWhiteSpace(raw))
-        {
-            return string.Empty;
-        }
-
-        Span<char> buffer = raw.Length <= 512 ? stackalloc char[raw.Length] : new char[raw.Length];
-        var idx = 0;
-        foreach (var ch in raw)
-        {
-            var cat = char.GetUnicodeCategory(ch);
-            if (cat is UnicodeCategory.Control
-                    or UnicodeCategory.Format
-                    or UnicodeCategory.LineSeparator
-                    or UnicodeCategory.ParagraphSeparator
-                    or UnicodeCategory.Surrogate
-                    or UnicodeCategory.PrivateUse
-                    or UnicodeCategory.OtherNotAssigned
-                || (cat == UnicodeCategory.SpaceSeparator && ch != ' '))
-            {
-                continue;
-            }
-
-            buffer[idx++] = ch;
-        }
-
-        return new string(buffer[..idx]).Trim();
-    }
+    internal static string SanitizeConnectionString(string? raw) =>
+        ConfigurationSanitizer.CleanSecret(raw);
 
     public bool IsConfigured { get; }
 

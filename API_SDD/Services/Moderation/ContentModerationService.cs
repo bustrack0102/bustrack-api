@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using ApiSDD.Common;
 using Azure;
 using Azure.AI.ContentSafety;
 
@@ -282,12 +283,10 @@ internal sealed partial class ContentModerationService : IContentModerationServi
 
     private ContentSafetyClient? TryCreateClient()
     {
-        var endpoint = _configuration["ContentSafety:Endpoint"];
-        var key = _configuration["ContentSafety:Key"];
-        if (string.IsNullOrWhiteSpace(endpoint)
-            || string.IsNullOrWhiteSpace(key)
-            || endpoint.Contains("REEMPLAZAR", StringComparison.OrdinalIgnoreCase)
-            || key.Contains("REEMPLAZAR", StringComparison.OrdinalIgnoreCase)
+        var endpoint = ConfigurationSanitizer.CleanSecret(_configuration["ContentSafety:Endpoint"]);
+        var key = ConfigurationSanitizer.CleanSecret(_configuration["ContentSafety:Key"]);
+        if (!ConfigurationSanitizer.HasUsableValue(endpoint)
+            || !ConfigurationSanitizer.HasUsableValue(key)
             || !Uri.TryCreate(endpoint, UriKind.Absolute, out var uri))
         {
             return null;

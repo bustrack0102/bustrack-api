@@ -53,60 +53,80 @@ internal sealed partial class MongoIndexInitializer : IHostedService
 
     private async Task EnsureCollectionIndexesAsync(CancellationToken ct)
     {
-        var usuarios = _mongo.RawCollection("usuarios");
-        await usuarios.Indexes.CreateOneAsync(
-            new CreateIndexModel<BsonDocument>(
-                Builders<BsonDocument>.IndexKeys.Ascending("correo"),
-                new CreateIndexOptions { Name = "ux_usuarios_correo", Unique = true }),
-            cancellationToken: ct).ConfigureAwait(false);
-
-        var paradas = _mongo.RawCollection("paradas");
-        await paradas.Indexes.CreateOneAsync(
+        await CreateIndexSafeAsync(
+            _mongo.RawCollection("paradas"),
             new CreateIndexModel<BsonDocument>(
                 Builders<BsonDocument>.IndexKeys.Geo2DSphere("ubicacion"),
                 new CreateIndexOptions { Name = "geo_paradas_ubicacion" }),
-            cancellationToken: ct).ConfigureAwait(false);
+            ct).ConfigureAwait(false);
 
-        var destinos = _mongo.RawCollection("destinos");
-        await destinos.Indexes.CreateOneAsync(
+        await CreateIndexSafeAsync(
+            _mongo.RawCollection("destinos"),
             new CreateIndexModel<BsonDocument>(
                 Builders<BsonDocument>.IndexKeys.Geo2DSphere("ubicacion"),
                 new CreateIndexOptions { Name = "geo_destinos_ubicacion" }),
-            cancellationToken: ct).ConfigureAwait(false);
+            ct).ConfigureAwait(false);
 
-        var candidatos = _mongo.RawCollection("candidatos_parada");
-        await candidatos.Indexes.CreateOneAsync(
+        await CreateIndexSafeAsync(
+            _mongo.RawCollection("candidatos_parada"),
             new CreateIndexModel<BsonDocument>(
                 Builders<BsonDocument>.IndexKeys.Geo2DSphere("ubicacion"),
                 new CreateIndexOptions { Name = "geo_candidatos_parada" }),
-            cancellationToken: ct).ConfigureAwait(false);
+            ct).ConfigureAwait(false);
 
-        var rutas = _mongo.RawCollection("rutas");
-        await rutas.Indexes.CreateOneAsync(
+        await CreateIndexSafeAsync(
+            _mongo.RawCollection("usuarios"),
+            new CreateIndexModel<BsonDocument>(
+                Builders<BsonDocument>.IndexKeys.Ascending("correo"),
+                new CreateIndexOptions<BsonDocument>
+                {
+                    Name = "ux_usuarios_correo",
+                    Unique = true,
+                    PartialFilterExpression = new BsonDocument("correo", new BsonDocument("$type", "string")),
+                }),
+            ct).ConfigureAwait(false);
+
+        await CreateIndexSafeAsync(
+            _mongo.RawCollection("rutas"),
             new CreateIndexModel<BsonDocument>(
                 Builders<BsonDocument>.IndexKeys.Ascending("empresaId").Ascending("activa"),
                 new CreateIndexOptions { Name = "ix_rutas_empresa_activa" }),
-            cancellationToken: ct).ConfigureAwait(false);
+            ct).ConfigureAwait(false);
 
-        var empresas = _mongo.RawCollection("empresas");
-        await empresas.Indexes.CreateOneAsync(
+        await CreateIndexSafeAsync(
+            _mongo.RawCollection("empresas"),
             new CreateIndexModel<BsonDocument>(
                 Builders<BsonDocument>.IndexKeys.Text("nombre").Text("siglas").Text("descripcion"),
                 new CreateIndexOptions { Name = "txt_empresas_busqueda" }),
-            cancellationToken: ct).ConfigureAwait(false);
+            ct).ConfigureAwait(false);
 
-        var horarios = _mongo.RawCollection("horarios");
-        await horarios.Indexes.CreateOneAsync(
+        await CreateIndexSafeAsync(
+            _mongo.RawCollection("horarios"),
             new CreateIndexModel<BsonDocument>(
                 Builders<BsonDocument>.IndexKeys.Ascending("rutaId").Ascending("diaSemana"),
                 new CreateIndexOptions { Name = "ix_horarios_ruta_dia" }),
-            cancellationToken: ct).ConfigureAwait(false);
+            ct).ConfigureAwait(false);
 
-        var tarifas = _mongo.RawCollection("tarifas");
-        await tarifas.Indexes.CreateOneAsync(
+        await CreateIndexSafeAsync(
+            _mongo.RawCollection("tarifas"),
             new CreateIndexModel<BsonDocument>(
                 Builders<BsonDocument>.IndexKeys.Ascending("rutaId").Ascending("vigente"),
                 new CreateIndexOptions { Name = "ix_tarifas_ruta_vigente" }),
-            cancellationToken: ct).ConfigureAwait(false);
+            ct).ConfigureAwait(false);
+    }
+
+    private async Task CreateIndexSafeAsync(
+        IMongoCollection<BsonDocument> collection,
+        CreateIndexModel<BsonDocument> model,
+        CancellationToken ct)
+    {
+        try
+        {
+            await collection.Indexes.CreateOneAsync(model, cancellationToken: ct).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is MongoException or TimeoutException)
+        {
+            LogIndexInitWarning(_logger, ex);
+        }
     }
 }

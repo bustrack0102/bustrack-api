@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using System.Text.Json;
+using ApiSDD.Common;
 using ApiSDD.Dtos.Intelligence;
 
 namespace ApiSDD.Services.Integrations;
@@ -41,9 +42,8 @@ internal sealed class GenAiServiceClient : IGenAiServiceClient
         CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(request);
-        var baseUrl = _configuration["Services:GenAiBaseUrl"];
-        if (string.IsNullOrWhiteSpace(baseUrl)
-            || baseUrl.Contains("REEMPLAZAR", StringComparison.OrdinalIgnoreCase)
+        var baseUrl = ConfigurationSanitizer.CleanSecret(_configuration["Services:GenAiBaseUrl"]);
+        if (!ConfigurationSanitizer.HasUsableValue(baseUrl)
             || !Uri.TryCreate(baseUrl, UriKind.Absolute, out var baseUri))
         {
             return null;
@@ -54,12 +54,7 @@ internal sealed class GenAiServiceClient : IGenAiServiceClient
             var client = _httpFactory.CreateClient("GenAiService");
             var targetUri = new Uri(baseUri, "recommendations");
             using var msg = new HttpRequestMessage(HttpMethod.Post, targetUri);
-            var internalKey = _configuration["InternalService:Key"];
-            if (!string.IsNullOrWhiteSpace(internalKey)
-                && !internalKey.Contains("REEMPLAZAR", StringComparison.OrdinalIgnoreCase))
-            {
-                msg.Headers.Add("X-Internal-Key", internalKey);
-            }
+            ConfigurationSanitizer.AttachInternalKeyHeader(msg, _configuration);
 
             msg.Content = JsonContent.Create(request);
             using var resp = await client.SendAsync(msg, ct).ConfigureAwait(false);

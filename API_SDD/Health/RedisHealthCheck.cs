@@ -1,4 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
+using ApiSDD.Common;
+using ApiSDD.Data.NoSql;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
@@ -27,9 +29,10 @@ internal sealed class RedisHealthCheck : IHealthCheck
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(context);
-        var redisCs = _configuration["Redis:ConnectionString"];
-        if (string.IsNullOrWhiteSpace(redisCs)
-            || redisCs.Contains("REEMPLAZAR", StringComparison.OrdinalIgnoreCase))
+        var redisCs = ConfigurationSanitizer.CleanSecret(_configuration["Redis:ConnectionString"]);
+        var usingRedis = ConfigurationSanitizer.HasUsableValue(redisCs);
+        var usingMongoCache = _cache is MongoDistributedCache;
+        if (!usingRedis && !usingMongoCache)
         {
             return HealthCheckResult.Healthy("distributed-memory cache active.");
         }
@@ -45,13 +48,16 @@ internal sealed class RedisHealthCheck : IHealthCheck
                 new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(10) },
                 cts.Token).ConfigureAwait(false);
             var val = await _cache.GetStringAsync(probeKey, cts.Token).ConfigureAwait(false);
-            return val == "1"
-                ? HealthCheckResult.Healthy("redis reachable.")
-                : HealthCheckResult.Degraded("redis probe mismatch.");
+            if (val != "1")
+            {
+                return HealthCheckResult.Degraded("distributed cache probe mismatch.");
+            }
+
+            return HealthCheckResult.Healthy(usingRedis ? "redis reachable." : "distributed-mongodb cache active.");
         }
         catch (Exception ex)
         {
-            return HealthCheckResult.Degraded($"redis unreachable (fallback activo): {ex.Message}", ex);
+            return HealthCheckResult.Degraded($"distributed cache unreachable (fallback activo): {ex.Message}", ex);
         }
     }
 }

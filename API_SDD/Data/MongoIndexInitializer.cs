@@ -113,6 +113,13 @@ internal sealed partial class MongoIndexInitializer : IHostedService
                 Builders<BsonDocument>.IndexKeys.Ascending("rutaId").Ascending("vigente"),
                 new CreateIndexOptions { Name = "ix_tarifas_ruta_vigente" }),
             ct).ConfigureAwait(false);
+
+        await CreateIndexSafeAsync(
+            _mongo.RawCollection(ApiSDD.Data.NoSql.MongoDistributedCache.CollectionName),
+            new CreateIndexModel<BsonDocument>(
+                Builders<BsonDocument>.IndexKeys.Ascending("expiraEnUtc"),
+                new CreateIndexOptions { Name = "ttl_cache_expira", ExpireAfter = TimeSpan.Zero }),
+            ct).ConfigureAwait(false);
     }
 
     private async Task CreateIndexSafeAsync(

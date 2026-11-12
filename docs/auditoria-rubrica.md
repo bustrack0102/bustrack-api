@@ -13,10 +13,10 @@
 | **4** | Móvil fiel a Figma sin eliminar funciones | Pendiente (Etapa 5 solicitada aparte) | Reservado para la siguiente fase sobre `bustrack-mobile`. |
 | **5** | SDD y DevSecOps | Completo (4 repos activos) | `scripts/check_sdd.ps1` (`SDD-OK`), `critic-guardrails.ps1` (`PASS`), `Semgrep`, `0` warnings-as-errors, `black`/`flake8`, `tsc`/`vitest`. |
 | **6** | Desarrollado con Agentes IA / SDD | Completo | `AGENTS.md`, `constitution.md`, `specs/`, `specs-endpoints/`, `Memoria.md` respetados en cada commit. |
-| **7** | Pruebas Unitarias, Seguridad e Integración | Completo en API, ML, GenAI y Landing | API: `UnitTest` 133, `IntegrationTest` 66, `SecurityTest` 12; ML: 17; GenAI: 12; Landing: 23. |
+| **7** | Pruebas Unitarias, Seguridad e Integración | Completo en API, ML, GenAI y Landing | API: `UnitTest` 140, `IntegrationTest` 66 (no-Docker), `SecurityTest` 12 (no-Docker), `ContractTest/PingFixtureTests` 2; ML: 17; GenAI: 13; Landing: 23. |
 | **8** | CI/CD automatizado | Completo | `ci-pr.yml` + `cd-azure.yml` + `infra-lifecycle.yml` en `bustrack0102`. |
-| **9** | Caché BD, Backend y Frontend | Completo (BD/API/Web); Móvil en E5 | MongoDB índices, Backend `IDistributedCache`/Redis + `ResponseCache`, Landing SWR cache (`publicStatusCache.ts`) + Nginx CDN `Cache-Control`. |
-| **10** | Logout Backend y Móvil | Completo en Backend (Móvil en E5) | `POST /api/v1/auth/logout` con blacklist distribuida `blacklist:{jti}` en `TokenRevocationService` + revocación refresh tokens. |
+| **9** | Caché BD, Backend y Frontend | Completo (BD/API/Web); Móvil en E5 | MongoDB índices, Backend `IDistributedCache` (`StackExchangeRedisCache` / `MongoDistributedCache` TTL) + `ResponseCache`, Landing SWR cache (`publicStatusCache.ts`) + Nginx CDN `Cache-Control`. |
+| **10** | Logout Backend y Móvil | Completo en Backend (Móvil en E5) | `POST /api/v1/auth/logout` con blacklist distribuida `blacklist:{jti}` en `TokenRevocationService` compartida entre réplicas (`cache_distribuida` TTL / Redis) + revocación refresh tokens. |
 | **11** | Matriz de versionamiento previa al desarrollo | Completo | `docs/versionamiento.md` definida previo a E1 + tags Git & Docker `0.2.0` -> `0.4.0` -> `0.6.0` -> `0.8.0` -> `0.9.0`. |
 | **12** | Uso de MCP / tooling | Completo sin saltar controles | Uso de GitHub CLI (`gh`), Azure CLI (`az`), Docker/ACR y flujos SDD. |
 | **13** | Nube, LB, Terraform IaC crear/eliminar, HTTPS | Completo | `infra/terraform/` + `.github/workflows/infra-lifecycle.yml` (`plan`/`apply`/`destroy`), Container Apps Envoy HTTPS LB. |
@@ -25,7 +25,7 @@
 | **16** | Moderación Cloud texto/imagen/video, Push, Privacidad, Baja cuenta, ML + GenAI | Completo en Backend (Móvil UI en E5) | `ContentModerationService` (Azure AI Content Safety `F0` + JPEG/PNG/WebP/MP4/WebM), `BlobMediaService`, `PushNotificationService` FCM v1, `DELETE /usuarios/me`, `EP-ML`, `EP-IA`. |
 | **17** | Landing: hosting, tienda, privacidad, manejo datos, Google Analytics | Completo | `bustrack-landing` en Azure HTTPS, `/privacidad`, `/manejo-datos`, GA4 `gtag.ts` por consentimiento (`VITE_GA_MEASUREMENT_ID`), Play Store CTA configurable. |
 | **18** | Cuenta única `bustrack0102` y correo único | Completo | Todos los repos, ACR y suscripción Azure bajo `bustrack0102` (`bustrack0102@gmail.com`). |
-| **19** | ML y GenAI con mismas prácticas SDD/DevSecOps | Completo | `bustrack-ml` (RandomForest `.joblib`, `F1=1.0`, `ROC-AUC=1.0`) y `bustrack-genai` (grounding estricto) con ingreso interno HTTPS y `X-Internal-Key`. |
+| **19** | ML y GenAI con mismas prácticas SDD/DevSecOps | Completo | `bustrack-ml` (RandomForest `.joblib`, `F1=1.0`, `ROC-AUC=1.0`) y `bustrack-genai` (grounding estricto) en Container Apps (`external = false` en ACA sin VNet privada) protegidos en ejecución por `X-Internal-Key` (`401` fail-closed). |
 | **20** | Fecha límite 2026-12-02 + script BD | En curso / Entregable BD listo | `db/mongodb/init-bustrack-nosql.js` validado (`node --check`) e idempotente; entrega final `.rar` tras E5. |
 
 ## 2. Cobertura de los 86 Endpoints del Excel (`EP-AU` a `EP-AD`)

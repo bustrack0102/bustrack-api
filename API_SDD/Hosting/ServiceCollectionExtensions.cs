@@ -199,9 +199,12 @@ internal static class ServiceCollectionExtensions
                 sp.GetRequiredService<TimeProvider>()));
             services.AddScoped<IEmailNotificationService, EmailNotificationService>();
 
-            var redisCs = configuration["Redis:ConnectionString"];
-            if (!string.IsNullOrWhiteSpace(redisCs)
-                && !redisCs.Contains("REEMPLAZAR", StringComparison.OrdinalIgnoreCase))
+            // Repositorio NoSQL unificado (MongoDB Atlas en nube; almacén en memoria en pruebas aisladas).
+            services.AddSingleton<ApiSDD.Data.MongoDbContext>();
+            services.AddHostedService<ApiSDD.Data.MongoIndexInitializer>();
+
+            var redisCs = ConfigurationSanitizer.CleanSecret(configuration["Redis:ConnectionString"]);
+            if (ConfigurationSanitizer.HasUsableValue(redisCs))
             {
                 services.AddStackExchangeRedisCache(o =>
                 {
@@ -211,12 +214,17 @@ internal static class ServiceCollectionExtensions
             }
             else
             {
-                services.AddDistributedMemoryCache();
+                services.AddOptions();
+                services.AddSingleton<MemoryDistributedCache>();
+                services.AddSingleton<IDistributedCache>(sp =>
+                {
+                    var mongo = sp.GetRequiredService<ApiSDD.Data.MongoDbContext>();
+                    return mongo.IsConfigured
+                        ? new ApiSDD.Data.NoSql.MongoDistributedCache(mongo, sp.GetRequiredService<TimeProvider>())
+                        : sp.GetRequiredService<MemoryDistributedCache>();
+                });
             }
 
-            // Repositorio NoSQL unificado (MongoDB Atlas en nube; almacén en memoria en pruebas aisladas).
-            services.AddSingleton<ApiSDD.Data.MongoDbContext>();
-            services.AddHostedService<ApiSDD.Data.MongoIndexInitializer>();
             services.AddSingleton<ApiSDD.Data.NoSql.InMemoryBusTrackStore>();
             services.AddSingleton<ApiSDD.Data.NoSql.MongoBusTrackStore>();
             services.AddSingleton<ApiSDD.Data.NoSql.IBusTrackNoSqlStore>(sp =>

@@ -238,6 +238,26 @@ public sealed class BsonSerializationTests
         ctx.IsConfigured.Should().BeFalse();
     }
 
+    [Fact]
+    public void MongoDistributedCacheSerializaDocumentoYCalculaTtl()
+    {
+        MongoDbContext.EnsureBsonConventionsRegistered();
+        var now = new DateTime(2026, 11, 12, 6, 0, 0, DateTimeKind.Utc);
+        var doc = MongoDistributedCache.BuildDocument(
+            "blacklist:jti-123",
+            "1794500000"u8.ToArray(),
+            new Microsoft.Extensions.Caching.Distributed.DistributedCacheEntryOptions
+            {
+                AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(15),
+            },
+            now);
+
+        var copy = RoundTrip(doc);
+        copy.Id.Should().Be("blacklist:jti-123");
+        copy.ExpiraEnUtc.Should().Be(now.AddMinutes(15));
+        Convert.FromBase64String(copy.ValorBase64).Should().Equal("1794500000"u8.ToArray());
+    }
+
     private static T RoundTrip<T>(T value)
     {
         var bson = value.ToBson();

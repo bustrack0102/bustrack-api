@@ -79,6 +79,7 @@ ensureCollection("solicitudes_recomendacion");
 ensureCollection("fuentes_datos");
 ensureCollection("importaciones");
 ensureCollection("dispositivos_fcm");
+ensureCollection("cache_distribuida");
 
 // 2. Índices Únicos, Compuestos, TTL y Geoespaciales (2dsphere)
 database.roles.createIndex({ nombre: 1 }, { name: "ux_roles_nombre", unique: true });
@@ -116,6 +117,7 @@ database.solicitudes_recomendacion.createIndex({ usuarioId: 1, creadoEnUtc: -1 }
 database.fuentes_datos.createIndex({ nombre: 1 }, { name: "ux_fuentes_nombre", unique: true });
 database.importaciones.createIndex({ fuenteDatoId: 1, ejecutadoEnUtc: -1 }, { name: "ix_importaciones_fuente" });
 database.dispositivos_fcm.createIndex({ tokenFcm: 1 }, { name: "ux_fcm_token", unique: true });
+database.cache_distribuida.createIndex({ expiraEnUtc: 1 }, { name: "ttl_cache_expira", expireAfterSeconds: 0 });
 
 // 3. Datos Semilla Idempotentes Alineados con API (UUIDs estándar)
 const empAvmId = UUID("20000000-0000-0000-0000-000000000001");

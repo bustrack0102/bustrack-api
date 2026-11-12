@@ -8,7 +8,7 @@ namespace ApiSDD.Services.NoSql;
 
 internal sealed partial class TransportCatalogService
 {
-    public async Task<ParadaDetallePublicoDto> CreateParadaAsync(ParadaUpsertRequest request, CancellationToken ct)
+    public async Task<ParadaDetalleDto> CreateParadaAsync(ParadaUpsertRequest request, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(request);
         ValidateCoordinates(request.Latitud, request.Longitud);
@@ -40,10 +40,10 @@ internal sealed partial class TransportCatalogService
 
         await _store.UpsertParadaAsync(doc, ct).ConfigureAwait(false);
         await InvalidateCatalogCacheAsync(ct).ConfigureAwait(false);
-        return MapParada(doc);
+        return MapParadaDetalle(doc, []);
     }
 
-    public async Task<ParadaDetallePublicoDto> UpdateParadaAsync(string id, ParadaUpsertRequest request, CancellationToken ct)
+    public async Task<ParadaDetalleDto> UpdateParadaAsync(string id, ParadaUpsertRequest request, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(request);
         ValidateCoordinates(request.Latitud, request.Longitud);
@@ -59,7 +59,7 @@ internal sealed partial class TransportCatalogService
 
         await _store.UpsertParadaAsync(doc, ct).ConfigureAwait(false);
         await InvalidateCatalogCacheAsync(ct).ConfigureAwait(false);
-        return MapParada(doc);
+        return MapParadaDetalle(doc, []);
     }
 
     public async Task DeactivateParadaAsync(string id, CancellationToken ct)
@@ -71,7 +71,7 @@ internal sealed partial class TransportCatalogService
         await InvalidateCatalogCacheAsync(ct).ConfigureAwait(false);
     }
 
-    public async Task<RutaListItemDto> CreateRutaAsync(RutaUpsertRequest request, CancellationToken ct)
+    public async Task<RutaDetalleResponse> CreateRutaAsync(RutaUpsertRequest request, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(request);
         ValidateRutaRequest(request);
@@ -88,38 +88,52 @@ internal sealed partial class TransportCatalogService
         var medio = await _store.GetMedioByIdAsync(request.MedioTransporteId, ct).ConfigureAwait(false)
                     ?? throw new NotFoundException("Medio de transporte no encontrado.");
 
-        var paradas = await ResolveParadasOrdenadasAsync(request.ParadasIds, ct).ConfigureAwait(false);
+        var paradas = await ResolveParadasOrdenadasAsync(request.ParadasOrdenadas, request.ParadasIds, ct)
+            .ConfigureAwait(false);
+        var primeraParada = paradas.Count > 0 ? paradas[0] : null;
+        var ultimaParada = paradas.Count > 0 ? paradas[paradas.Count - 1] : null;
+        var (origenId, origenNombre) = await ResolveExtremoAsync(
+            request.ParadaOrigenId, request.ParadaOrigen, primeraParada, ct).ConfigureAwait(false);
+        var (destinoId, destinoNombre) = await ResolveExtremoAsync(
+            request.ParadaDestinoId, request.ParadaDestino, ultimaParada, ct).ConfigureAwait(false);
+
         var doc = new RutaDoc
         {
             Id = Guid.NewGuid(),
             Codigo = request.Codigo.Trim(),
             Nombre = request.Nombre.Trim(),
+            Descripcion = request.Descripcion?.Trim(),
             EmpresaId = empresa.Id,
             EmpresaNombre = empresa.Nombre,
             MedioTransporteId = medio.Id,
             MedioTransporteNombre = medio.Nombre,
-            ParadaOrigen = request.ParadaOrigen.Trim(),
-            ParadaDestino = request.ParadaDestino.Trim(),
+            ParadaOrigenId = origenId,
+            ParadaDestinoId = destinoId,
+            ParadaOrigen = origenNombre,
+            ParadaDestino = destinoNombre,
             Municipio = empresa.MunicipioBase,
             TarifaBaseMxn = request.TarifaBaseMxn,
             DuracionEstimadaMin = Math.Max(5, request.DuracionEstimadaMin),
-            DistanciaKm = Math.Max(1.0, paradas.Count * 1.8),
-            PrimerHorario = request.PrimerHorario.Trim(),
-            UltimoHorario = request.UltimoHorario.Trim(),
+            DistanciaKm = request.DistanciaTotalKm ?? Math.Max(1.0, paradas.Count * 1.8),
+            PrimerHorario = string.IsNullOrWhiteSpace(request.PrimerHorario) ? "05:00" : request.PrimerHorario.Trim(),
+            UltimoHorario = string.IsNullOrWhiteSpace(request.UltimoHorario) ? "22:00" : request.UltimoHorario.Trim(),
             FrecuenciaMinutos = Math.Max(1, request.FrecuenciaMinutos),
-            DiasOperacion = request.DiasOperacion.Trim(),
+            DiasOperacion = string.IsNullOrWhiteSpace(request.DiasOperacion) ? "Lun-Dom" : request.DiasOperacion.Trim(),
             CalificacionPromedio = 4.5,
             TotalCalificaciones = 0,
             Activa = request.Activa,
+            Trazado = request.TrazadoGeoJson ?? request.Coordenadas,
+            FuenteDatoId = request.FuenteDatoId,
+            FechaActualizacion = DateTime.UtcNow,
             Paradas = paradas,
         };
 
         await _store.UpsertRutaAsync(doc, ct).ConfigureAwait(false);
         await InvalidateCatalogCacheAsync(ct).ConfigureAwait(false);
-        return MapRuta(doc);
+        return await BuildRutaDetalleAsync(doc, ct).ConfigureAwait(false);
     }
 
-    public async Task<RutaListItemDto> UpdateRutaAsync(Guid id, RutaUpsertRequest request, CancellationToken ct)
+    public async Task<RutaDetalleResponse> UpdateRutaAsync(Guid id, RutaUpsertRequest request, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(request);
         ValidateRutaRequest(request);
@@ -138,29 +152,60 @@ internal sealed partial class TransportCatalogService
         var medio = await _store.GetMedioByIdAsync(request.MedioTransporteId, ct).ConfigureAwait(false)
                     ?? throw new NotFoundException("Medio de transporte no encontrado.");
 
+        var paradas = await ResolveParadasOrdenadasAsync(request.ParadasOrdenadas, request.ParadasIds, ct)
+            .ConfigureAwait(false);
+        if (paradas.Count > 0)
+        {
+            doc.Paradas = paradas;
+        }
+
+        var primeraParada = doc.Paradas.Count > 0 ? doc.Paradas[0] : null;
+        var ultimaParada = doc.Paradas.Count > 0 ? doc.Paradas[doc.Paradas.Count - 1] : null;
+        var (origenId, origenNombre) = await ResolveExtremoAsync(
+            request.ParadaOrigenId, request.ParadaOrigen,
+            primeraParada, ct).ConfigureAwait(false);
+        var (destinoId, destinoNombre) = await ResolveExtremoAsync(
+            request.ParadaDestinoId, request.ParadaDestino,
+            ultimaParada, ct).ConfigureAwait(false);
+
         doc.Codigo = request.Codigo.Trim();
         doc.Nombre = request.Nombre.Trim();
+        doc.Descripcion = request.Descripcion?.Trim() ?? doc.Descripcion;
         doc.EmpresaId = empresa.Id;
         doc.EmpresaNombre = empresa.Nombre;
         doc.MedioTransporteId = medio.Id;
         doc.MedioTransporteNombre = medio.Nombre;
-        doc.ParadaOrigen = request.ParadaOrigen.Trim();
-        doc.ParadaDestino = request.ParadaDestino.Trim();
+        doc.ParadaOrigenId = origenId;
+        doc.ParadaDestinoId = destinoId;
+        doc.ParadaOrigen = origenNombre;
+        doc.ParadaDestino = destinoNombre;
         doc.TarifaBaseMxn = request.TarifaBaseMxn;
-        doc.PrimerHorario = request.PrimerHorario.Trim();
-        doc.UltimoHorario = request.UltimoHorario.Trim();
+        doc.PrimerHorario = string.IsNullOrWhiteSpace(request.PrimerHorario) ? doc.PrimerHorario : request.PrimerHorario.Trim();
+        doc.UltimoHorario = string.IsNullOrWhiteSpace(request.UltimoHorario) ? doc.UltimoHorario : request.UltimoHorario.Trim();
         doc.FrecuenciaMinutos = Math.Max(1, request.FrecuenciaMinutos);
-        doc.DiasOperacion = request.DiasOperacion.Trim();
+        doc.DiasOperacion = string.IsNullOrWhiteSpace(request.DiasOperacion) ? doc.DiasOperacion : request.DiasOperacion.Trim();
         doc.DuracionEstimadaMin = Math.Max(5, request.DuracionEstimadaMin);
-        doc.Activa = request.Activa;
-        if (request.ParadasIds is not null)
+        doc.DistanciaKm = request.DistanciaTotalKm ?? doc.DistanciaKm;
+        if (request.TrazadoGeoJson is { Count: > 0 } trazado)
         {
-            doc.Paradas = await ResolveParadasOrdenadasAsync(request.ParadasIds, ct).ConfigureAwait(false);
+            doc.Trazado = trazado;
         }
+        else if (request.Coordenadas is { Count: > 0 } coordenadas)
+        {
+            doc.Trazado = coordenadas;
+        }
+
+        if (request.FuenteDatoId.HasValue)
+        {
+            doc.FuenteDatoId = request.FuenteDatoId;
+        }
+
+        doc.Activa = request.Activa;
+        doc.FechaActualizacion = DateTime.UtcNow;
 
         await _store.UpsertRutaAsync(doc, ct).ConfigureAwait(false);
         await InvalidateCatalogCacheAsync(ct).ConfigureAwait(false);
-        return MapRuta(doc);
+        return await BuildRutaDetalleAsync(doc, ct).ConfigureAwait(false);
     }
 
     public async Task DeactivateRutaAsync(Guid id, CancellationToken ct)
@@ -350,9 +395,36 @@ internal sealed partial class TransportCatalogService
     }
 
     private async Task<IReadOnlyList<ParadaEnRutaDoc>> ResolveParadasOrdenadasAsync(
+        IReadOnlyList<RutaParadaOrdenRequest>? ordenadas,
         IReadOnlyList<string>? ids,
         CancellationToken ct)
     {
+        if (ordenadas is { Count: > 0 })
+        {
+            var ordered = new List<ParadaEnRutaDoc>();
+            foreach (var item in ordenadas.OrderBy(o => o.Orden))
+            {
+                var parada = await _store.GetParadaByIdAsync(item.ParadaId.Trim(), ct).ConfigureAwait(false)
+                             ?? throw new NotFoundException($"Parada '{item.ParadaId}' no encontrada.");
+                ordered.Add(new ParadaEnRutaDoc
+                {
+                    ParadaId = parada.Id,
+                    Nombre = parada.Nombre,
+                    ReferenciaVisual = parada.Referencias,
+                    Municipio = parada.Municipio,
+                    Latitud = parada.Ubicacion.Latitud,
+                    Longitud = parada.Ubicacion.Longitud,
+                    OrdenSecuencia = item.Orden > 0 ? item.Orden : ordered.Count + 1,
+                    TiempoDesdeOrigenMin = Math.Max(0, item.TiempoMin ?? 0),
+                    DistanciaDesdeOrigenKm = Math.Max(0, item.DistanciaKm ?? 0),
+                    PermiteAscenso = item.PermiteAscenso,
+                    PermiteDescenso = item.PermiteDescenso,
+                });
+            }
+
+            return ordered;
+        }
+
         if (ids is null || ids.Count == 0)
         {
             return [];
@@ -367,6 +439,8 @@ internal sealed partial class TransportCatalogService
             {
                 ParadaId = parada.Id,
                 Nombre = parada.Nombre,
+                ReferenciaVisual = parada.Referencias,
+                Municipio = parada.Municipio,
                 Latitud = parada.Ubicacion.Latitud,
                 Longitud = parada.Ubicacion.Longitud,
                 OrdenSecuencia = i + 1,
@@ -374,6 +448,50 @@ internal sealed partial class TransportCatalogService
         }
 
         return list;
+    }
+
+    private async Task<(string? Id, string Nombre)> ResolveExtremoAsync(
+        string? paradaId,
+        string? nombre,
+        ParadaEnRutaDoc? fallback,
+        CancellationToken ct)
+    {
+        if (!string.IsNullOrWhiteSpace(paradaId))
+        {
+            var parada = await _store.GetParadaByIdAsync(paradaId.Trim(), ct).ConfigureAwait(false)
+                         ?? throw new NotFoundException($"Parada '{paradaId}' no encontrada.");
+            return (parada.Id, parada.Nombre);
+        }
+
+        if (!string.IsNullOrWhiteSpace(nombre))
+        {
+            return (fallback?.ParadaId, nombre.Trim());
+        }
+
+        return fallback is null
+            ? (null, string.Empty)
+            : (fallback.ParadaId, fallback.Nombre);
+    }
+
+    private async Task<RutaDetalleResponse> BuildRutaDetalleAsync(RutaDoc doc, CancellationToken ct)
+    {
+        return await GetRutaByIdAsync(doc.Id, ct).ConfigureAwait(false)
+            ?? new RutaDetalleResponse(
+                doc.Id,
+                doc.Codigo,
+                doc.Nombre,
+                doc.Descripcion,
+                Math.Round(doc.DistanciaKm, 2),
+                doc.DuracionEstimadaMin,
+                new RutaDetalleEmpresaDto(doc.EmpresaId, doc.EmpresaNombre, doc.CalificacionPromedio),
+                new RutaDetalleMedioTransporteDto(doc.MedioTransporteId, doc.MedioTransporteNombre),
+                null,
+                null,
+                BuildStopSequence(doc, [], null, null),
+                [],
+                [],
+                [],
+                doc.FechaActualizacion ?? _store.CatalogUpdatedAtUtc);
     }
 
     private static void ValidateCoordinates(double lat, double lon)
@@ -386,17 +504,23 @@ internal sealed partial class TransportCatalogService
 
     private static void ValidateRutaRequest(RutaUpsertRequest request)
     {
+        var tieneOrigen = !string.IsNullOrWhiteSpace(request.ParadaOrigen)
+            || !string.IsNullOrWhiteSpace(request.ParadaOrigenId);
+        var tieneDestino = !string.IsNullOrWhiteSpace(request.ParadaDestino)
+            || !string.IsNullOrWhiteSpace(request.ParadaDestinoId);
+
         if (string.IsNullOrWhiteSpace(request.Codigo)
             || string.IsNullOrWhiteSpace(request.Nombre)
-            || string.IsNullOrWhiteSpace(request.ParadaOrigen)
-            || string.IsNullOrWhiteSpace(request.ParadaDestino))
+            || !tieneOrigen
+            || !tieneDestino)
         {
-            throw new RequestValidationException("Código, nombre, paradaOrigen y paradaDestino son obligatorios.");
+            throw new RequestValidationException(
+                "Código, nombre, parada de origen y parada de destino son obligatorios.");
         }
 
-        if (request.TarifaBaseMxn <= 0 || request.FrecuenciaMinutos <= 0)
+        if (request.FrecuenciaMinutos <= 0)
         {
-            throw new RequestValidationException("Tarifa base y frecuencia deben ser mayores a cero.");
+            throw new RequestValidationException("La frecuencia debe ser mayor a cero.");
         }
     }
 
@@ -422,10 +546,4 @@ internal sealed partial class TransportCatalogService
             throw new RequestValidationException("RutaId, tipoTarifa y montoMxn > 0 son obligatorios.");
         }
     }
-
-    private static HorarioItemDto MapHorario(HorarioDoc h) =>
-        new(h.Id, h.RutaId, h.DiaSemana, h.HoraInicio, h.HoraFin, h.FrecuenciaMin, h.SalidasFijas, h.Activo);
-
-    private static TarifaItemDto MapTarifa(TarifaDoc t) =>
-        new(t.Id, t.RutaId, t.TipoTarifa, t.MontoMxn, t.DescuentoEstudiantePct, t.Moneda, t.Vigente, t.Notas);
 }

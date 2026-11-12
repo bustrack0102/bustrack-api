@@ -1,6 +1,6 @@
 # Tareas — 32-endpoint-parada-individual — Endpoint de detalle y cercanía de paradas
 
-> Spec: `spec.md` · Plan: `plan.md` · Estado: Propuesto.
+> Spec: `spec.md` · Plan: `plan.md` · Estado: Implementado (validado por build Release + `UnitTest`; integración pendiente de Docker).
 
 ## Actividades
 
@@ -24,8 +24,8 @@
 
 ## Cierre
 
-- [ ] Contrato verificado contra el código.
-- [ ] Pruebas de éxito y error.
-- [ ] Documentación de consumidores actualizada.
-- [ ] Sin secretos ni PII en ejemplos.
+- [x] Contrato verificado contra el código.
+- [x] Pruebas de éxito y error.
+- [x] Documentación de consumidores actualizada.
+- [x] Sin secretos ni PII en ejemplos.
 

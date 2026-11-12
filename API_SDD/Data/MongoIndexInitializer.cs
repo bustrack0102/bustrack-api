@@ -61,6 +61,22 @@ internal sealed partial class MongoIndexInitializer : IHostedService
             ct).ConfigureAwait(false);
 
         await CreateIndexSafeAsync(
+            _mongo.RawCollection("paradas"),
+            new CreateIndexModel<BsonDocument>(
+                Builders<BsonDocument>.IndexKeys
+                    .Text("nombre").Text("referencias").Text("municipio"),
+                new CreateIndexOptions { Name = "txt_paradas_busqueda" }),
+            ct).ConfigureAwait(false);
+
+        await CreateIndexSafeAsync(
+            _mongo.RawCollection("paradas"),
+            new CreateIndexModel<BsonDocument>(
+                Builders<BsonDocument>.IndexKeys
+                    .Ascending("municipio").Ascending("activo").Ascending("esTerminal"),
+                new CreateIndexOptions { Name = "ix_paradas_municipio_activa" }),
+            ct).ConfigureAwait(false);
+
+        await CreateIndexSafeAsync(
             _mongo.RawCollection("destinos"),
             new CreateIndexModel<BsonDocument>(
                 Builders<BsonDocument>.IndexKeys.Geo2DSphere("ubicacion"),
@@ -91,6 +107,36 @@ internal sealed partial class MongoIndexInitializer : IHostedService
             new CreateIndexModel<BsonDocument>(
                 Builders<BsonDocument>.IndexKeys.Ascending("empresaId").Ascending("activa"),
                 new CreateIndexOptions { Name = "ix_rutas_empresa_activa" }),
+            ct).ConfigureAwait(false);
+
+        await CreateIndexSafeAsync(
+            _mongo.RawCollection("rutas"),
+            new CreateIndexModel<BsonDocument>(
+                Builders<BsonDocument>.IndexKeys
+                    .Ascending("paradaOrigenId").Ascending("paradaDestinoId").Ascending("activa"),
+                new CreateIndexOptions { Name = "ix_rutas_origen_destino" }),
+            ct).ConfigureAwait(false);
+
+        await CreateIndexSafeAsync(
+            _mongo.RawCollection("rutas"),
+            new CreateIndexModel<BsonDocument>(
+                Builders<BsonDocument>.IndexKeys.Geo2DSphere("trazado"),
+                new CreateIndexOptions { Name = "geo_rutas_trazado" }),
+            ct).ConfigureAwait(false);
+
+        await CreateIndexSafeAsync(
+            _mongo.RawCollection("rutas"),
+            new CreateIndexModel<BsonDocument>(
+                Builders<BsonDocument>.IndexKeys.Text("nombre").Text("codigo"),
+                new CreateIndexOptions { Name = "txt_rutas_busqueda" }),
+            ct).ConfigureAwait(false);
+
+        await CreateIndexSafeAsync(
+            _mongo.RawCollection("rutas"),
+            new CreateIndexModel<BsonDocument>(
+                Builders<BsonDocument>.IndexKeys
+                    .Ascending("paradas.paradaId").Ascending("paradas.ordenSecuencia"),
+                new CreateIndexOptions { Name = "ix_rutas_paradas_orden" }),
             ct).ConfigureAwait(false);
 
         await CreateIndexSafeAsync(

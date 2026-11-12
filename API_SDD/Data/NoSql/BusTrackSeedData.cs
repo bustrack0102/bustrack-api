@@ -82,24 +82,24 @@ internal static class BusTrackSeedData
 
     public static IReadOnlyList<ParadaDoc> Paradas() =>
     [
-        new() { Id = "PAR-01", Nombre = "Central de Autobuses de Pachuca", Municipio = "Pachuca de Soto", Tipo = "Terminal", Referencias = "Blvd. Javier Rojo Gómez", Ubicacion = GeoJsonPointDoc.FromLatLon(20.1012, -98.7523), Techada = true, RutasDisponibles = 8, Activo = true },
-        new() { Id = "PAR-02", Nombre = "Plaza Juárez Centro Pachuca", Municipio = "Pachuca de Soto", Tipo = "Urbana", Referencias = "Centro Histórico", Ubicacion = GeoJsonPointDoc.FromLatLon(20.1245, -98.7321), Techada = true, RutasDisponibles = 12, Activo = true },
-        new() { Id = "PAR-03", Nombre = "Puente Actopan Troncal", Municipio = "Actopan", Tipo = "Intermedia", Referencias = "Carretera México-Laredo", Ubicacion = GeoJsonPointDoc.FromLatLon(20.2687, -98.9431), Techada = true, RutasDisponibles = 6, Activo = true },
-        new() { Id = "PAR-04", Nombre = "Central de Autobuses de Tula", Municipio = "Tula de Allende", Tipo = "Terminal", Referencias = "Av. Hidalgo Centro", Ubicacion = GeoJsonPointDoc.FromLatLon(20.0512, -99.3421), Techada = true, RutasDisponibles = 10, Activo = true },
-        new() { Id = "PAR-05", Nombre = "Crucero Cruz Azul - San Marcos", Municipio = "Tula de Allende", Tipo = "Escolar", Referencias = "Acceso UTTT y Ciudad Cooperativa", Ubicacion = GeoJsonPointDoc.FromLatLon(20.0345, -99.2891), Techada = true, RutasDisponibles = 4, Activo = true },
-        new() { Id = "PAR-06", Nombre = "Jardín Municipal Tepeji del Río", Municipio = "Tepeji del Río", Tipo = "Terminal", Referencias = "Zona Centro Tepeji", Ubicacion = GeoJsonPointDoc.FromLatLon(19.9056, -99.3412), Techada = true, RutasDisponibles = 5, Activo = true },
-        new() { Id = "PAR-07", Nombre = "Monumento al Minero Real del Monte", Municipio = "Mineral del Monte", Tipo = "Turística", Referencias = "Pueblo Mágico", Ubicacion = GeoJsonPointDoc.FromLatLon(20.1412, -98.6712), Techada = true, RutasDisponibles = 3, Activo = true },
+        new() { Id = "PAR-01", Codigo = "P-01", Nombre = "Central de Autobuses de Pachuca", Municipio = "Pachuca de Soto", Tipo = "Terminal", EsTerminal = true, Referencias = "Blvd. Javier Rojo Gómez", Ubicacion = GeoJsonPointDoc.FromLatLon(20.1012, -98.7523), Techada = true, RutasDisponibles = 8, Activo = true, FechaActualizacion = SeedTimestamp },
+        new() { Id = "PAR-02", Codigo = "P-02", Nombre = "Plaza Juárez Centro Pachuca", Municipio = "Pachuca de Soto", Tipo = "Urbana", EsTerminal = false, Referencias = "Centro Histórico", Ubicacion = GeoJsonPointDoc.FromLatLon(20.1245, -98.7321), Techada = true, RutasDisponibles = 12, Activo = true, FechaActualizacion = SeedTimestamp },
+        new() { Id = "PAR-03", Codigo = "P-03", Nombre = "Puente Actopan Troncal", Municipio = "Actopan", Tipo = "Intermedia", EsTerminal = false, Referencias = "Carretera México-Laredo", Ubicacion = GeoJsonPointDoc.FromLatLon(20.2687, -98.9431), Techada = true, RutasDisponibles = 6, Activo = true, FechaActualizacion = SeedTimestamp },
+        new() { Id = "PAR-04", Codigo = "P-04", Nombre = "Central de Autobuses de Tula", Municipio = "Tula de Allende", Tipo = "Terminal", EsTerminal = true, Referencias = "Av. Hidalgo Centro", Ubicacion = GeoJsonPointDoc.FromLatLon(20.0512, -99.3421), Techada = true, RutasDisponibles = 10, Activo = true, FechaActualizacion = SeedTimestamp },
+        new() { Id = "PAR-05", Codigo = "P-05", Nombre = "Crucero Cruz Azul - San Marcos", Municipio = "Tula de Allende", Tipo = "Escolar", EsTerminal = false, Referencias = "Acceso UTTT y Ciudad Cooperativa", Ubicacion = GeoJsonPointDoc.FromLatLon(20.0345, -99.2891), Techada = true, RutasDisponibles = 4, Activo = true, FechaActualizacion = SeedTimestamp },
+        new() { Id = "PAR-06", Codigo = "P-06", Nombre = "Jardín Municipal Tepeji del Río", Municipio = "Tepeji del Río", Tipo = "Terminal", EsTerminal = true, Referencias = "Zona Centro Tepeji", Ubicacion = GeoJsonPointDoc.FromLatLon(19.9056, -99.3412), Techada = true, RutasDisponibles = 5, Activo = true, FechaActualizacion = SeedTimestamp },
+        new() { Id = "PAR-07", Codigo = "P-07", Nombre = "Monumento al Minero Real del Monte", Municipio = "Mineral del Monte", Tipo = "Turística", EsTerminal = false, Referencias = "Pueblo Mágico", Ubicacion = GeoJsonPointDoc.FromLatLon(20.1412, -98.6712), Techada = true, RutasDisponibles = 3, Activo = true, FechaActualizacion = SeedTimestamp },
     ];
 
     public static IReadOnlyList<RutaDoc> Rutas()
     {
         IReadOnlyList<ParadaEnRutaDoc> seqPachucaTula =
         [
-            new() { ParadaId = "P-01", Nombre = "Central de Autobuses de Pachuca", Latitud = 20.1012, Longitud = -98.7523, OrdenSecuencia = 1 },
-            new() { ParadaId = "P-02", Nombre = "Plaza Juárez Pachuca", Latitud = 20.1245, Longitud = -98.7321, OrdenSecuencia = 2 },
-            new() { ParadaId = "P-03", Nombre = "Puente Actopan Troncal", Latitud = 20.2687, Longitud = -98.9431, OrdenSecuencia = 3 },
-            new() { ParadaId = "P-04", Nombre = "Crucero Cruz Azul", Latitud = 20.0345, Longitud = -99.2891, OrdenSecuencia = 4 },
-            new() { ParadaId = "P-05", Nombre = "Central de Autobuses de Tula", Latitud = 20.0512, Longitud = -99.3421, OrdenSecuencia = 5 },
+            new() { ParadaId = "PAR-01", Nombre = "Central de Autobuses de Pachuca", ReferenciaVisual = "Blvd. Javier Rojo Gómez", Municipio = "Pachuca de Soto", Latitud = 20.1012, Longitud = -98.7523, OrdenSecuencia = 1, TiempoDesdeOrigenMin = 0, DistanciaDesdeOrigenKm = 0, PermiteAscenso = true, PermiteDescenso = true },
+            new() { ParadaId = "PAR-02", Nombre = "Plaza Juárez Centro Pachuca", ReferenciaVisual = "Centro Histórico", Municipio = "Pachuca de Soto", Latitud = 20.1245, Longitud = -98.7321, OrdenSecuencia = 2, TiempoDesdeOrigenMin = 10, DistanciaDesdeOrigenKm = 3.2, PermiteAscenso = true, PermiteDescenso = true },
+            new() { ParadaId = "PAR-03", Nombre = "Puente Actopan Troncal", ReferenciaVisual = "Carretera México-Laredo", Municipio = "Actopan", Latitud = 20.2687, Longitud = -98.9431, OrdenSecuencia = 3, TiempoDesdeOrigenMin = 25, DistanciaDesdeOrigenKm = 20.5, PermiteAscenso = true, PermiteDescenso = true },
+            new() { ParadaId = "PAR-05", Nombre = "Crucero Cruz Azul - San Marcos", ReferenciaVisual = "Acceso UTTT y Ciudad Cooperativa", Municipio = "Tula de Allende", Latitud = 20.0345, Longitud = -99.2891, OrdenSecuencia = 4, TiempoDesdeOrigenMin = 55, DistanciaDesdeOrigenKm = 52.0, PermiteAscenso = true, PermiteDescenso = true },
+            new() { ParadaId = "PAR-04", Nombre = "Central de Autobuses de Tula", ReferenciaVisual = "Av. Hidalgo Centro", Municipio = "Tula de Allende", Latitud = 20.0512, Longitud = -99.3421, OrdenSecuencia = 5, TiempoDesdeOrigenMin = 70, DistanciaDesdeOrigenKm = 68.5, PermiteAscenso = true, PermiteDescenso = true },
         ];
 
         return
@@ -109,10 +109,13 @@ internal static class BusTrackSeedData
                 Id = Ruta1Id,
                 Codigo = "R-01",
                 Nombre = "Pachuca – Tula Directo Express",
+                Descripcion = "Corredor foráneo directo Pachuca – Actopan – Tula.",
                 EmpresaId = EmpresaAvmId,
                 EmpresaNombre = "Autotransportes Valle del Mezquital",
                 MedioTransporteId = 1,
                 MedioTransporteNombre = "Autobús Directo",
+                ParadaOrigenId = "PAR-01",
+                ParadaDestinoId = "PAR-04",
                 ParadaOrigen = "Central de Autobuses de Pachuca",
                 ParadaDestino = "Central de Autobuses de Tula",
                 Municipio = "Tula de Allende",
@@ -126,6 +129,16 @@ internal static class BusTrackSeedData
                 CalificacionPromedio = 4.6,
                 TotalCalificaciones = 42,
                 Activa = true,
+                FuenteDatoId = FuenteOficialId,
+                FechaActualizacion = SeedTimestamp,
+                Trazado =
+                [
+                    [-98.7523, 20.1012],
+                    [-98.7321, 20.1245],
+                    [-98.9431, 20.2687],
+                    [-99.2891, 20.0345],
+                    [-99.3421, 20.0512],
+                ],
                 Paradas = seqPachucaTula,
             },
             new()
@@ -133,12 +146,15 @@ internal static class BusTrackSeedData
                 Id = Ruta2Id,
                 Codigo = "R-02",
                 Nombre = "Tula – Tepeji Centro Metropolitano",
+                Descripcion = "Servicio metropolitano Tula – El Carmen UTTT – Tepeji Centro.",
                 EmpresaId = EmpresaTepejiId,
                 EmpresaNombre = "Autotransportes Tepeji del Río",
                 MedioTransporteId = 2,
                 MedioTransporteNombre = "Microbús Urbano",
-                ParadaOrigen = "Tula Centro (Plaza Juárez)",
-                ParadaDestino = "Tepeji Centro (Jardín Municipal)",
+                ParadaOrigenId = "PAR-04",
+                ParadaDestinoId = "PAR-06",
+                ParadaOrigen = "Central de Autobuses de Tula",
+                ParadaDestino = "Jardín Municipal Tepeji del Río",
                 Municipio = "Tepeji del Río",
                 TarifaBaseMxn = 22.00m,
                 DuracionEstimadaMin = 35,
@@ -150,11 +166,19 @@ internal static class BusTrackSeedData
                 CalificacionPromedio = 4.4,
                 TotalCalificaciones = 38,
                 Activa = true,
+                FuenteDatoId = FuenteOficialId,
+                FechaActualizacion = SeedTimestamp,
+                Trazado =
+                [
+                    [-99.3421, 20.0512],
+                    [-99.2891, 20.0345],
+                    [-99.3412, 19.9056],
+                ],
                 Paradas =
                 [
-                    new() { ParadaId = "PAR-04", Nombre = "Central de Autobuses de Tula", Latitud = 20.0512, Longitud = -99.3421, OrdenSecuencia = 1 },
-                    new() { ParadaId = "PAR-05", Nombre = "Crucero Cruz Azul - San Marcos", Latitud = 20.0345, Longitud = -99.2891, OrdenSecuencia = 2 },
-                    new() { ParadaId = "PAR-06", Nombre = "Jardín Municipal Tepeji del Río", Latitud = 19.9056, Longitud = -99.3412, OrdenSecuencia = 3 },
+                    new() { ParadaId = "PAR-04", Nombre = "Central de Autobuses de Tula", ReferenciaVisual = "Av. Hidalgo Centro", Municipio = "Tula de Allende", Latitud = 20.0512, Longitud = -99.3421, OrdenSecuencia = 1, TiempoDesdeOrigenMin = 0, DistanciaDesdeOrigenKm = 0, PermiteAscenso = true, PermiteDescenso = true },
+                    new() { ParadaId = "PAR-05", Nombre = "Crucero Cruz Azul - San Marcos", ReferenciaVisual = "Acceso UTTT y Ciudad Cooperativa", Municipio = "Tula de Allende", Latitud = 20.0345, Longitud = -99.2891, OrdenSecuencia = 2, TiempoDesdeOrigenMin = 10, DistanciaDesdeOrigenKm = 6.5, PermiteAscenso = true, PermiteDescenso = true },
+                    new() { ParadaId = "PAR-06", Nombre = "Jardín Municipal Tepeji del Río", ReferenciaVisual = "Zona Centro Tepeji", Municipio = "Tepeji del Río", Latitud = 19.9056, Longitud = -99.3412, OrdenSecuencia = 3, TiempoDesdeOrigenMin = 35, DistanciaDesdeOrigenKm = 19.2, PermiteAscenso = true, PermiteDescenso = true },
                 ],
             },
             new()
@@ -162,12 +186,15 @@ internal static class BusTrackSeedData
                 Id = Ruta3Id,
                 Codigo = "R-03",
                 Nombre = "Tula – Refinería Miguel Hidalgo",
+                Descripcion = "Ruta urbana de apoyo al corredor industrial de Tula.",
                 EmpresaId = EmpresaAvmId,
                 EmpresaNombre = "Autotransportes Valle del Mezquital",
                 MedioTransporteId = 2,
                 MedioTransporteNombre = "Microbús Urbano",
+                ParadaOrigenId = "PAR-04",
+                ParadaDestinoId = "PAR-05",
                 ParadaOrigen = "Central de Autobuses de Tula",
-                ParadaDestino = "Puerta 1 Refinería",
+                ParadaDestino = "Crucero Cruz Azul - San Marcos",
                 Municipio = "Tula de Allende",
                 TarifaBaseMxn = 15.00m,
                 DuracionEstimadaMin = 24,
@@ -179,10 +206,17 @@ internal static class BusTrackSeedData
                 CalificacionPromedio = 4.3,
                 TotalCalificaciones = 24,
                 Activa = true,
+                FuenteDatoId = FuenteOficialId,
+                FechaActualizacion = SeedTimestamp,
+                Trazado =
+                [
+                    [-99.3421, 20.0512],
+                    [-99.2891, 20.0345],
+                ],
                 Paradas =
                 [
-                    new() { ParadaId = "PAR-04", Nombre = "Central de Autobuses de Tula", Latitud = 20.0512, Longitud = -99.3421, OrdenSecuencia = 1 },
-                    new() { ParadaId = "PAR-05", Nombre = "Crucero Cruz Azul - San Marcos", Latitud = 20.0345, Longitud = -99.2891, OrdenSecuencia = 2 },
+                    new() { ParadaId = "PAR-04", Nombre = "Central de Autobuses de Tula", ReferenciaVisual = "Av. Hidalgo Centro", Municipio = "Tula de Allende", Latitud = 20.0512, Longitud = -99.3421, OrdenSecuencia = 1, TiempoDesdeOrigenMin = 0, DistanciaDesdeOrigenKm = 0, PermiteAscenso = true, PermiteDescenso = true },
+                    new() { ParadaId = "PAR-05", Nombre = "Crucero Cruz Azul - San Marcos", ReferenciaVisual = "Acceso UTTT y Ciudad Cooperativa", Municipio = "Tula de Allende", Latitud = 20.0345, Longitud = -99.2891, OrdenSecuencia = 2, TiempoDesdeOrigenMin = 24, DistanciaDesdeOrigenKm = 11.4, PermiteAscenso = true, PermiteDescenso = true },
                 ],
             },
             new()
@@ -190,11 +224,14 @@ internal static class BusTrackSeedData
                 Id = Ruta4Id,
                 Codigo = "R-04",
                 Nombre = "Pachuca – Mineral del Monte Turístico",
+                Descripcion = "Corredor turístico Pachuca – Real del Monte.",
                 EmpresaId = EmpresaFlechaRojaId,
                 EmpresaNombre = "Flecha Roja Hidalgo",
                 MedioTransporteId = 1,
                 MedioTransporteNombre = "Autobús Directo",
-                ParadaOrigen = "Plaza Juárez Pachuca",
+                ParadaOrigenId = "PAR-02",
+                ParadaDestinoId = "PAR-07",
+                ParadaOrigen = "Plaza Juárez Centro Pachuca",
                 ParadaDestino = "Monumento al Minero Real del Monte",
                 Municipio = "Mineral del Monte",
                 TarifaBaseMxn = 30.00m,
@@ -207,10 +244,17 @@ internal static class BusTrackSeedData
                 CalificacionPromedio = 4.8,
                 TotalCalificaciones = 51,
                 Activa = true,
+                FuenteDatoId = FuenteOficialId,
+                FechaActualizacion = SeedTimestamp,
+                Trazado =
+                [
+                    [-98.7321, 20.1245],
+                    [-98.6712, 20.1412],
+                ],
                 Paradas =
                 [
-                    new() { ParadaId = "PAR-02", Nombre = "Plaza Juárez Centro Pachuca", Latitud = 20.1245, Longitud = -98.7321, OrdenSecuencia = 1 },
-                    new() { ParadaId = "PAR-07", Nombre = "Monumento al Minero Real del Monte", Latitud = 20.1412, Longitud = -98.6712, OrdenSecuencia = 2 },
+                    new() { ParadaId = "PAR-02", Nombre = "Plaza Juárez Centro Pachuca", ReferenciaVisual = "Centro Histórico", Municipio = "Pachuca de Soto", Latitud = 20.1245, Longitud = -98.7321, OrdenSecuencia = 1, TiempoDesdeOrigenMin = 0, DistanciaDesdeOrigenKm = 0, PermiteAscenso = true, PermiteDescenso = true },
+                    new() { ParadaId = "PAR-07", Nombre = "Monumento al Minero Real del Monte", ReferenciaVisual = "Pueblo Mágico", Municipio = "Mineral del Monte", Latitud = 20.1412, Longitud = -98.6712, OrdenSecuencia = 2, TiempoDesdeOrigenMin = 30, DistanciaDesdeOrigenKm = 16.0, PermiteAscenso = true, PermiteDescenso = true },
                 ],
             },
         ];

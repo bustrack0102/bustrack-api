@@ -38,7 +38,7 @@ public sealed record RutaParadasResponse(
     Guid rutaId,
     string rutaNombre,
     int totalParadas,
-    IReadOnlyList<RutaParadaItemDto> paradas);
+    IReadOnlyList<RutaParadaSecuenciaDto> paradas);
 
 public sealed record RutaGeometriaResponse(
     Guid RutaId,

@@ -28,11 +28,20 @@ public sealed class ParadasController : ControllerBase
     [EnableRateLimiting("Global")]
     public async Task<IActionResult> List(
         [FromQuery] string? municipio = null,
+        [FromQuery] Guid? rutaId = null,
+        [FromQuery] bool? esTerminal = null,
+        [FromQuery] double? lat = null,
+        [FromQuery] double? lng = null,
+        [FromQuery] double radioMetros = 800,
+        [FromQuery] int pagina = 1,
+        [FromQuery] int tamanoPagina = 25,
         CancellationToken cancellationToken = default)
     {
-        var result = await _catalog.ListParadasAsync(municipio, cancellationToken).ConfigureAwait(false);
+        var result = await _catalog.ListParadasAsync(
+            municipio, rutaId, esTerminal, lat, lng, radioMetros, pagina, tamanoPagina, cancellationToken)
+            .ConfigureAwait(false);
         Response.Headers.Append("Cache-Control", "public, max-age=120");
-        return Ok(result);
+        return Ok(result.Items);
     }
 
     // GET /api/v1/paradas/autocompletar (EP-RP-01)
@@ -41,10 +50,14 @@ public sealed class ParadasController : ControllerBase
     [EnableRateLimiting("Global")]
     public async Task<IActionResult> Autocompletar(
         [FromQuery] string q = "",
+        [FromQuery] string? municipio = null,
+        [FromQuery] bool? soloOrigen = null,
+        [FromQuery] Guid? rutaId = null,
         [FromQuery] int limite = 10,
         CancellationToken cancellationToken = default)
     {
-        var result = await _catalog.AutocompleteParadasAsync(q, limite, cancellationToken).ConfigureAwait(false);
+        var result = await _catalog.AutocompleteParadasAsync(q, municipio, soloOrigen, rutaId, limite, cancellationToken)
+            .ConfigureAwait(false);
         return Ok(result);
     }
 

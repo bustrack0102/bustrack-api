@@ -28,13 +28,20 @@ public sealed class RutasController : ControllerBase
     [EnableRateLimiting("Global")]
     [ResponseCache(Duration = 60, Location = ResponseCacheLocation.Any)]
     public async Task<IActionResult> GetRutas(
+        [FromQuery] Guid? empresaId = null,
+        [FromQuery] int? medioTransporteId = null,
+        [FromQuery] string? municipioOrigen = null,
+        [FromQuery] string? municipioDestino = null,
+        [FromQuery] bool? activa = null,
         [FromQuery] string? empresa = null,
         [FromQuery] string? destino = null,
         [FromQuery] int pagina = 1,
         [FromQuery] int tamanoPagina = 20,
         CancellationToken cancellationToken = default)
     {
-        var result = await _catalog.ListRutasAsync(empresa, destino, pagina, tamanoPagina, cancellationToken)
+        var result = await _catalog.ListRutasAsync(
+            empresaId, medioTransporteId, municipioOrigen, municipioDestino, activa,
+            empresa, destino, pagina, tamanoPagina, cancellationToken)
             .ConfigureAwait(false);
         Response.Headers.Append("Cache-Control", "public, max-age=60");
         return Ok(result);
@@ -45,16 +52,22 @@ public sealed class RutasController : ControllerBase
     [AllowAnonymous]
     [EnableRateLimiting("Global")]
     public async Task<IActionResult> Buscar(
+        [FromQuery] Guid? paradaOrigenId = null,
+        [FromQuery] Guid? paradaDestinoId = null,
+        [FromQuery] string? destinoTuristicoId = null,
+        [FromQuery] Guid? empresaId = null,
+        [FromQuery] int? medioTransporteId = null,
+        [FromQuery] decimal? tarifaMaxima = null,
+        [FromQuery] string? diaOperacion = null,
+        [FromQuery] string? horaSalida = null,
+        [FromQuery] string? ordenarPor = null,
         [FromQuery] string? origen = null,
         [FromQuery] string? destino = null,
-        [FromQuery] string? municipio = null,
-        [FromQuery] string? medioTransporte = null,
-        [FromQuery] decimal? tarifaMax = null,
-        [FromQuery] string? ordenarPor = null,
         CancellationToken cancellationToken = default)
     {
         var result = await _catalog.SearchRutasAsync(
-            origen, destino, municipio, medioTransporte, tarifaMax, ordenarPor, cancellationToken)
+            paradaOrigenId, paradaDestinoId, destinoTuristicoId, empresaId, medioTransporteId,
+            tarifaMaxima, diaOperacion, horaSalida, ordenarPor, origen, destino, cancellationToken)
             .ConfigureAwait(false);
         return Ok(result);
     }
@@ -65,10 +78,12 @@ public sealed class RutasController : ControllerBase
     [EnableRateLimiting("Global")]
     public async Task<IActionResult> Autocompletar(
         [FromQuery] string q = "",
+        [FromQuery] Guid? empresaId = null,
         [FromQuery] int limite = 10,
         CancellationToken cancellationToken = default)
     {
-        var result = await _catalog.AutocompleteRutasAsync(q, limite, cancellationToken).ConfigureAwait(false);
+        var result = await _catalog.AutocompleteRutasAsync(q, empresaId, limite, cancellationToken)
+            .ConfigureAwait(false);
         return Ok(result);
     }
 
@@ -91,9 +106,14 @@ public sealed class RutasController : ControllerBase
     [HttpGet("{id:guid}/paradas")]
     [AllowAnonymous]
     [EnableRateLimiting("Global")]
-    public async Task<IActionResult> GetParadasPorRuta([FromRoute] Guid id, CancellationToken cancellationToken)
+    public async Task<IActionResult> GetParadasPorRuta(
+        [FromRoute] Guid id,
+        [FromQuery] bool? soloAscenso = null,
+        [FromQuery] bool? soloDescenso = null,
+        CancellationToken cancellationToken = default)
     {
-        var result = await _catalog.GetRutaParadasAsync(id, cancellationToken).ConfigureAwait(false);
+        var result = await _catalog.GetRutaParadasAsync(id, soloAscenso, soloDescenso, cancellationToken)
+            .ConfigureAwait(false);
         if (result is null)
         {
             return NotFound(new { error = "Ruta no encontrada.", status = 404 });
@@ -106,9 +126,14 @@ public sealed class RutasController : ControllerBase
     [HttpGet("{id:guid}/geometria")]
     [AllowAnonymous]
     [EnableRateLimiting("Global")]
-    public async Task<IActionResult> GetGeometria([FromRoute] Guid id, CancellationToken cancellationToken)
+    public async Task<IActionResult> GetGeometria(
+        [FromRoute] Guid id,
+        [FromQuery] string? paradaSubidaId = null,
+        [FromQuery] string? paradaBajadaId = null,
+        CancellationToken cancellationToken = default)
     {
-        var result = await _catalog.GetRutaGeometriaAsync(id, cancellationToken).ConfigureAwait(false);
+        var result = await _catalog.GetRutaGeometriaAsync(id, paradaSubidaId, paradaBajadaId, cancellationToken)
+            .ConfigureAwait(false);
         if (result is null)
         {
             return NotFound(new { error = "Ruta no encontrada.", status = 404 });

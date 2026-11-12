@@ -208,6 +208,9 @@ public sealed class ParadaDoc
     [BsonId]
     public string Id { get; set; } = default!;
 
+    [BsonElement("codigo")]
+    public string? Codigo { get; set; }
+
     [BsonElement("nombre")]
     public string Nombre { get; set; } = default!;
 
@@ -216,6 +219,9 @@ public sealed class ParadaDoc
 
     [BsonElement("tipo")]
     public string Tipo { get; set; } = "Intermedia";
+
+    [BsonElement("esTerminal")]
+    public bool EsTerminal { get; set; }
 
     [BsonElement("referencias")]
     public string? Referencias { get; set; }
@@ -231,6 +237,9 @@ public sealed class ParadaDoc
 
     [BsonElement("activo")]
     public bool Activo { get; set; } = true;
+
+    [BsonElement("fechaActualizacion")]
+    public DateTime? FechaActualizacion { get; set; }
 }
 
 public sealed class ParadaEnRutaDoc
@@ -241,6 +250,12 @@ public sealed class ParadaEnRutaDoc
     [BsonElement("nombre")]
     public string Nombre { get; set; } = default!;
 
+    [BsonElement("referenciaVisual")]
+    public string? ReferenciaVisual { get; set; }
+
+    [BsonElement("municipio")]
+    public string? Municipio { get; set; }
+
     [BsonElement("latitud")]
     public double Latitud { get; set; }
 
@@ -249,6 +264,18 @@ public sealed class ParadaEnRutaDoc
 
     [BsonElement("ordenSecuencia")]
     public int OrdenSecuencia { get; set; }
+
+    [BsonElement("tiempoDesdeOrigenMin")]
+    public int TiempoDesdeOrigenMin { get; set; }
+
+    [BsonElement("distanciaDesdeOrigenKm")]
+    public double DistanciaDesdeOrigenKm { get; set; }
+
+    [BsonElement("permiteAscenso")]
+    public bool PermiteAscenso { get; set; } = true;
+
+    [BsonElement("permiteDescenso")]
+    public bool PermiteDescenso { get; set; } = true;
 }
 
 public sealed class RutaDoc
@@ -262,6 +289,9 @@ public sealed class RutaDoc
     [BsonElement("nombre")]
     public string Nombre { get; set; } = default!;
 
+    [BsonElement("descripcion")]
+    public string? Descripcion { get; set; }
+
     [BsonElement("empresaId")]
     public Guid EmpresaId { get; set; }
 
@@ -273,6 +303,12 @@ public sealed class RutaDoc
 
     [BsonElement("medioTransporteNombre")]
     public string MedioTransporteNombre { get; set; } = default!;
+
+    [BsonElement("paradaOrigenId")]
+    public string? ParadaOrigenId { get; set; }
+
+    [BsonElement("paradaDestinoId")]
+    public string? ParadaDestinoId { get; set; }
 
     [BsonElement("paradaOrigen")]
     public string ParadaOrigen { get; set; } = default!;
@@ -312,6 +348,15 @@ public sealed class RutaDoc
 
     [BsonElement("activa")]
     public bool Activa { get; set; } = true;
+
+    [BsonElement("trazado")]
+    public IReadOnlyList<double[]>? Trazado { get; set; }
+
+    [BsonElement("fuenteDatoId")]
+    public Guid? FuenteDatoId { get; set; }
+
+    [BsonElement("fechaActualizacion")]
+    public DateTime? FechaActualizacion { get; set; }
 
     [BsonElement("paradas")]
     public IReadOnlyList<ParadaEnRutaDoc> Paradas { get; set; } = [];

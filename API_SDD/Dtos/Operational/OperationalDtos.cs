@@ -135,30 +135,48 @@ public sealed record ImportacionItemDto(
 // --- Admin Catálogos CRUD (EP-RP-11..16, EP-HT-03..05/08..10, EP-DE-06..08) ---
 public sealed record ParadaUpsertRequest(
     string? Id,
+    string? Codigo,
     string Nombre,
+    string? ReferenciaVisual,
     string Municipio,
     double Latitud,
     double Longitud,
+    bool EsTerminal = false,
     bool Techada = false,
     string? Referencias = null,
     bool Activo = true);
+
+public sealed record RutaParadaOrdenRequest(
+    string ParadaId,
+    int Orden,
+    int? TiempoMin = null,
+    double? DistanciaKm = null,
+    bool PermiteAscenso = true,
+    bool PermiteDescenso = true);
 
 public sealed record RutaUpsertRequest(
     string Codigo,
     string Nombre,
     Guid EmpresaId,
     int MedioTransporteId,
-    string ParadaOrigen,
-    string ParadaDestino,
-    decimal TarifaBaseMxn,
-    string PrimerHorario,
-    string UltimoHorario,
-    int FrecuenciaMinutos,
+    string? ParadaOrigenId = null,
+    string? ParadaDestinoId = null,
+    decimal TarifaBaseMxn = 0,
+    string? Descripcion = null,
+    IReadOnlyList<RutaParadaOrdenRequest>? ParadasOrdenadas = null,
+    IReadOnlyList<double[]>? TrazadoGeoJson = null,
+    Guid? FuenteDatoId = null,
+    bool Activa = true,
+    string? ParadaOrigen = null,
+    string? ParadaDestino = null,
+    string? PrimerHorario = null,
+    string? UltimoHorario = null,
+    int FrecuenciaMinutos = 15,
     string DiasOperacion = "Lun-Dom",
     int DuracionEstimadaMin = 30,
     IReadOnlyList<string>? ParadasIds = null,
     IReadOnlyList<double[]>? Coordenadas = null,
-    bool Activa = true);
+    double? DistanciaTotalKm = null);
 
 public sealed record HorarioUpsertRequest(
     Guid RutaId,

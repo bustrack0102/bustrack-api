@@ -6,6 +6,7 @@ using ApiSDD.Dtos;
 using ApiSDD.Security;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 
 namespace ApiSDD.Services;
 
@@ -28,6 +29,7 @@ internal sealed class AuthService : IAuthService
     private readonly TimeProvider _time;
     private readonly IValidator<LoginRequestDto> _validator;
     private readonly Services.Email.IEmailNotificationService _emailService;
+    private readonly bool _skipEmailVerification;
 
     public AuthService(
         AppDbContext db,
@@ -36,7 +38,8 @@ internal sealed class AuthService : IAuthService
         ITokenRevocationService tokenRevocation,
         TimeProvider time,
         IValidator<LoginRequestDto> validator,
-        Services.Email.IEmailNotificationService emailService)
+        Services.Email.IEmailNotificationService emailService,
+        IConfiguration configuration)
     {
         _db = db ?? throw new ArgumentNullException(nameof(db));
         _hasher = hasher ?? throw new ArgumentNullException(nameof(hasher));
@@ -45,6 +48,7 @@ internal sealed class AuthService : IAuthService
         _time = time ?? throw new ArgumentNullException(nameof(time));
         _validator = validator ?? throw new ArgumentNullException(nameof(validator));
         _emailService = emailService ?? throw new ArgumentNullException(nameof(emailService));
+        _skipEmailVerification = configuration?.GetValue<bool>("Auth:SkipEmailVerification") ?? false;
     }
 
     // -------------------------------------------------------------------------
@@ -90,6 +94,9 @@ internal sealed class AuthService : IAuthService
             await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         }
 
+        // En entornos de test (Auth:SkipEmailVerification=true), activar la cuenta directamente.
+        var activarInmediato = _skipEmailVerification;
+
         var nuevoUsuario = new Usuario
         {
             Id = Guid.NewGuid(),
@@ -97,41 +104,66 @@ internal sealed class AuthService : IAuthService
             Correo = correoNorm,
             PasswordHash = _hasher.Hash(dto.password),
             RolId = rolUsuario.Id,
-            Activo = false,
-            CorreoVerificado = false,
+            Activo = activarInmediato,
+            CorreoVerificado = activarInmediato,
+            FechaVerificacionCorreo = activarInmediato ? DateTime.UtcNow : null,
             FechaAvisoPrivacidad = DateTime.UtcNow,
             FechaCreacion = DateTime.UtcNow
         };
 
         _db.Usuarios.Add(nuevoUsuario);
 
-        var rawVerificationToken = CryptoTokenHelper.GenerateSecureToken();
-        var verificationTokenEntity = new TokenVerificacionCorreo
+        if (!activarInmediato)
+        {
+            var rawVerificationToken = CryptoTokenHelper.GenerateSecureToken();
+            var verificationTokenEntity = new TokenVerificacionCorreo
+            {
+                Id = Guid.NewGuid(),
+                UsuarioId = nuevoUsuario.Id,
+                TokenHash = CryptoTokenHelper.HashToken(rawVerificationToken),
+                FechaExpiracion = DateTime.UtcNow.AddHours(24),
+                Usado = false,
+                FechaCreacion = DateTime.UtcNow
+            };
+
+            _db.TokensVerificacionCorreo.Add(verificationTokenEntity);
+            await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+            await _emailService.SendEmailVerificationAsync(
+                nuevoUsuario.Correo,
+                nuevoUsuario.NombreCompleto,
+                rawVerificationToken,
+                cancellationToken).ConfigureAwait(false);
+
+            return new AuthResponseDto(
+                new UsuarioPerfilResumenDto(nuevoUsuario.Id, nuevoUsuario.NombreCompleto, nuevoUsuario.Correo, rolUsuario.Nombre),
+                accessToken: null,
+                refreshToken: null,
+                expiraEnSegundos: 0,
+                requiereVerificacion: true,
+                mensaje: "Cuenta registrada con éxito. Se ha enviado un correo con instrucciones para verificar tu dirección antes de iniciar sesión."
+            );
+        }
+
+        // Bypass de verificación (solo entornos de test): emitir tokens directamente.
+        var rawRefreshDirect = CryptoTokenHelper.GenerateSecureToken();
+        var refreshDirect = new RefreshToken
         {
             Id = Guid.NewGuid(),
             UsuarioId = nuevoUsuario.Id,
-            TokenHash = CryptoTokenHelper.HashToken(rawVerificationToken),
-            FechaExpiracion = DateTime.UtcNow.AddHours(24),
-            Usado = false,
-            FechaCreacion = DateTime.UtcNow
+            TokenHash = CryptoTokenHelper.HashToken(rawRefreshDirect),
+            FechaExpiracion = DateTime.UtcNow.AddDays(30),
+            Revocado = false
         };
-
-        _db.TokensVerificacionCorreo.Add(verificationTokenEntity);
+        _db.RefreshTokens.Add(refreshDirect);
         await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        await _emailService.SendEmailVerificationAsync(
-            nuevoUsuario.Correo,
-            nuevoUsuario.NombreCompleto,
-            rawVerificationToken,
-            cancellationToken).ConfigureAwait(false);
-
+        var tokenDataDirect = _jwt.CreateAccessToken(nuevoUsuario.Id.ToString(), rolUsuario.Nombre);
         return new AuthResponseDto(
             new UsuarioPerfilResumenDto(nuevoUsuario.Id, nuevoUsuario.NombreCompleto, nuevoUsuario.Correo, rolUsuario.Nombre),
-            accessToken: null,
-            refreshToken: null,
-            expiraEnSegundos: 0,
-            requiereVerificacion: true,
-            mensaje: "Cuenta registrada con éxito. Se ha enviado un correo con instrucciones para verificar tu dirección antes de iniciar sesión."
+            tokenDataDirect.Token,
+            rawRefreshDirect,
+            AccessTokenDurationSeconds
         );
     }
 

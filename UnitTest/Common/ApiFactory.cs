@@ -24,6 +24,7 @@ public class ApiFactory : WebApplicationFactory<Program>
         builder.UseSetting("Jwt:Audience", "test-audience");
         builder.UseSetting("ConnectionStrings:Default", InvalidConnectionString);
         builder.UseSetting("EnableProviderStates", "true");
+        builder.UseSetting("Auth:SkipEmailVerification", "true");
         builder.UseSetting(
             "DataProtection:KeysPath",
             Path.Combine(Path.GetTempPath(), "apisdd-tests-dp"));

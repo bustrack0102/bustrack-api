@@ -44,6 +44,7 @@ internal sealed partial class MongoBusTrackStore : IBusTrackNoSqlStore, IDisposa
     private IMongoCollection<UsuarioDoc> Usuarios => _mongo.GetCollection<UsuarioDoc>("usuarios");
     private IMongoCollection<RefreshTokenDoc> RefreshTokens => _mongo.GetCollection<RefreshTokenDoc>("refresh_tokens");
     private IMongoCollection<TokenRecuperacionDoc> RecoveryTokens => _mongo.GetCollection<TokenRecuperacionDoc>("tokens_recuperacion");
+    private IMongoCollection<TokenVerificacionCorreoDoc> VerificationTokens => _mongo.GetCollection<TokenVerificacionCorreoDoc>("tokens_verificacion_correo");
     private IMongoCollection<BloqueoLoginDoc> Locks => _mongo.GetCollection<BloqueoLoginDoc>("seg_bloqueo");
     private IMongoCollection<MedioTransporteDoc> Medios => _mongo.GetCollection<MedioTransporteDoc>("mediosTransporte");
     private IMongoCollection<EmpresaDoc> Empresas => _mongo.GetCollection<EmpresaDoc>("empresas");
@@ -299,6 +300,24 @@ internal sealed partial class MongoBusTrackStore : IBusTrackNoSqlStore, IDisposa
 
     public Task UpdateRecoveryTokenAsync(TokenRecuperacionDoc token, CancellationToken ct) =>
         RecoveryTokens.ReplaceOneAsync(t => t.Id == token.Id, token, new ReplaceOptions { IsUpsert = true }, ct);
+
+    public async Task<TokenVerificacionCorreoDoc?> GetVerificationTokenByHashAsync(string tokenHash, CancellationToken ct) =>
+        await VerificationTokens.Find(t => t.TokenHash == tokenHash).FirstOrDefaultAsync(ct).ConfigureAwait(false);
+
+    public Task InvalidateActiveVerificationTokensAsync(Guid usuarioId, CancellationToken ct)
+    {
+        var filter = Builders<TokenVerificacionCorreoDoc>.Filter.And(
+            Builders<TokenVerificacionCorreoDoc>.Filter.Eq(t => t.UsuarioId, usuarioId),
+            Builders<TokenVerificacionCorreoDoc>.Filter.Eq(t => t.Usado, false));
+        var update = Builders<TokenVerificacionCorreoDoc>.Update.Set(t => t.Usado, true);
+        return VerificationTokens.UpdateManyAsync(filter, update, cancellationToken: ct);
+    }
+
+    public Task CreateVerificationTokenAsync(TokenVerificacionCorreoDoc token, CancellationToken ct) =>
+        VerificationTokens.InsertOneAsync(token, cancellationToken: ct);
+
+    public Task UpdateVerificationTokenAsync(TokenVerificacionCorreoDoc token, CancellationToken ct) =>
+        VerificationTokens.ReplaceOneAsync(t => t.Id == token.Id, token, new ReplaceOptions { IsUpsert = true }, ct);
 
     public async Task<BloqueoLoginDoc?> GetLoginLockAsync(string key, CancellationToken ct) =>
         await Locks.Find(b => b.NombreUsuario == key).FirstOrDefaultAsync(ct).ConfigureAwait(false);

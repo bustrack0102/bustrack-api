@@ -117,4 +117,29 @@ public sealed class AuthController : ControllerBase
         var response = await _service.RestablecerPasswordAsync(dto, cancellationToken).ConfigureAwait(false);
         return Ok(response);
     }
+
+    // Verificación de correo electrónico
+    [HttpGet("verificar-correo")]
+    [AllowAnonymous]
+    [EnableRateLimiting("Login")]
+    public async Task<IActionResult> VerificarCorreo(
+        [FromQuery] string token,
+        CancellationToken cancellationToken)
+    {
+        var response = await _service.VerificarCorreoAsync(token, cancellationToken).ConfigureAwait(false);
+        return Ok(response);
+    }
+
+    // Reenvío de correo de verificación
+    [HttpPost("reenviar-verificacion")]
+    [AllowAnonymous]
+    [EnableRateLimiting("Login")]
+    public async Task<IActionResult> ReenviarVerificacion(
+        [FromBody] ReenviarVerificacionRequestDto dto,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(dto);
+        var response = await _service.ReenviarVerificacionAsync(dto, cancellationToken).ConfigureAwait(false);
+        return Ok(response);
+    }
 }

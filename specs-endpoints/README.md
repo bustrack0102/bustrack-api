@@ -45,6 +45,14 @@
 | `47-endpoint-moderacion` | `POST /api/v1/moderacion` | Endpoint de moderación de contenido | Implementado |
 | `48-endpoint-mapa-elementos` | `GET /api/v1/mapa/elementos` | Endpoint de elementos del mapa interactivo (EP-RP-10) | Implementado |
 | `49-endpoint-catalogos-estado` | `GET /api/v1/catalogos/estado-actualizacion y /api/v1/health` | Endpoint de versión de catálogos SQLite y health v1 (EP-AD-01/09) | Implementado |
+| `50-endpoint-viajes` | `POST /api/v1/viajes/iniciar y POST /api/v1/viajes/{id}/finalizar` | Endpoints de inicio y finalización de viajes asistidos | Implementado |
+| `51-endpoint-media-cdn` | `POST /api/v1/media/subir y GET /api/v1/media/{archivo}` | Endpoints de subida y descarga de archivos multimedia (CDN/Blob) | Implementado |
+| `52-endpoint-dispositivos-fcm` | `POST /api/v1/dispositivos/registro y DELETE /api/v1/dispositivos/{token}` | Endpoints de gestión de tokens de notificaciones push (FCM) | Implementado |
+| `53-endpoint-admin-fuentes-importaciones` | `GET/POST /api/v1/admin/fuentes y GET/POST /api/v1/admin/importaciones` | Endpoints de administración de fuentes de datos e importaciones | Implementado |
+| `54-endpoint-consentimientos-sensores` | `POST /api/v1/usuarios/consentimiento-sensores y candidatos-parada` | Endpoints de consentimiento de sensores y candidatos de paradas | Implementado |
+| `55-endpoint-recomendaciones-historial` | `GET /api/v1/recomendaciones/historial y POST /{id}/retroalimentacion` | Endpoints de historial y retroalimentación de recomendaciones | Implementado |
+| `56-endpoint-auth-verificar-correo` | `GET /api/v1/auth/verificar-correo` | Endpoint de verificación de correo electrónico vía token criptográfico (EP-AU-11) | Implementado |
+| `57-endpoint-auth-reenviar-verificacion` | `POST /api/v1/auth/reenviar-verificacion` | Endpoint para reenvío de correo con enlace de verificación (EP-AU-12) | Implementado |
 
 ## Reglas
 

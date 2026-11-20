@@ -22,6 +22,7 @@ public sealed class AppDbContext : DbContext
     public DbSet<Usuario> Usuarios => Set<Usuario>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<TokenRecuperacion> TokensRecuperacion => Set<TokenRecuperacion>();
+    public DbSet<TokenVerificacionCorreo> TokensVerificacionCorreo => Set<TokenVerificacionCorreo>();
 
     // Módulo de Transporte (TB-EM-01, TB-EM-02 y Rutas)
     public DbSet<MedioTransporte> MediosTransporte => Set<MedioTransporte>();
@@ -117,6 +118,21 @@ public sealed class AppDbContext : DbContext
 
             entity.HasOne(e => e.Usuario)
                 .WithMany(u => u.TokensRecuperacion)
+                .HasForeignKey(e => e.UsuarioId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // TB-AU-05: tokens_verificacion_correo
+        modelBuilder.Entity<TokenVerificacionCorreo>(entity =>
+        {
+            entity.ToTable("tokens_verificacion_correo");
+            entity.HasKey(e => e.Id).HasName("pk_tokens_verificacion_correo");
+            entity.Property(e => e.TokenHash).HasMaxLength(128).IsRequired();
+            entity.HasIndex(e => e.TokenHash).IsUnique().HasDatabaseName("idx_tokens_verif_hash");
+            entity.HasIndex(e => new { e.UsuarioId, e.FechaExpiracion, e.Usado }).HasDatabaseName("idx_tokens_verif_usuario_vigentes");
+
+            entity.HasOne(e => e.Usuario)
+                .WithMany(u => u.TokensVerificacionCorreo)
                 .HasForeignKey(e => e.UsuarioId)
                 .OnDelete(DeleteBehavior.Cascade);
         });

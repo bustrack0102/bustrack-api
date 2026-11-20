@@ -53,6 +53,12 @@ public sealed class UsuarioDoc
     [BsonElement("activo")]
     public bool Activo { get; set; } = true;
 
+    [BsonElement("correoVerificado")]
+    public bool CorreoVerificado { get; set; } = false;
+
+    [BsonElement("fechaVerificacionCorreo")]
+    public DateTime? FechaVerificacionCorreo { get; set; }
+
     [BsonElement("consentimientoSensores")]
     public bool ConsentimientoSensores { get; set; }
 
@@ -97,6 +103,30 @@ public sealed class RefreshTokenDoc
 }
 
 public sealed class TokenRecuperacionDoc
+{
+    [BsonId]
+    public Guid Id { get; set; }
+
+    [BsonElement("usuarioId")]
+    public Guid UsuarioId { get; set; }
+
+    [BsonElement("tokenHash")]
+    public string TokenHash { get; set; } = default!;
+
+    [BsonElement("fechaExpiracion")]
+    public DateTime FechaExpiracion { get; set; }
+
+    [BsonElement("usado")]
+    public bool Usado { get; set; }
+
+    [BsonElement("fechaUso")]
+    public DateTime? FechaUso { get; set; }
+
+    [BsonElement("fechaCreacion")]
+    public DateTime FechaCreacion { get; set; }
+}
+
+public sealed class TokenVerificacionCorreoDoc
 {
     [BsonId]
     public Guid Id { get; set; }

@@ -27,6 +27,7 @@ internal sealed class AuthService : IAuthService
     private readonly ITokenRevocationService _tokenRevocation;
     private readonly TimeProvider _time;
     private readonly IValidator<LoginRequestDto> _validator;
+    private readonly Services.Email.IEmailNotificationService _emailService;
 
     public AuthService(
         AppDbContext db,
@@ -34,7 +35,8 @@ internal sealed class AuthService : IAuthService
         IJwtTokenService jwt,
         ITokenRevocationService tokenRevocation,
         TimeProvider time,
-        IValidator<LoginRequestDto> validator)
+        IValidator<LoginRequestDto> validator,
+        Services.Email.IEmailNotificationService emailService)
     {
         _db = db ?? throw new ArgumentNullException(nameof(db));
         _hasher = hasher ?? throw new ArgumentNullException(nameof(hasher));
@@ -42,6 +44,7 @@ internal sealed class AuthService : IAuthService
         _tokenRevocation = tokenRevocation ?? throw new ArgumentNullException(nameof(tokenRevocation));
         _time = time ?? throw new ArgumentNullException(nameof(time));
         _validator = validator ?? throw new ArgumentNullException(nameof(validator));
+        _emailService = emailService ?? throw new ArgumentNullException(nameof(emailService));
     }
 
     // -------------------------------------------------------------------------
@@ -94,33 +97,41 @@ internal sealed class AuthService : IAuthService
             Correo = correoNorm,
             PasswordHash = _hasher.Hash(dto.password),
             RolId = rolUsuario.Id,
-            Activo = true,
+            Activo = false,
+            CorreoVerificado = false,
             FechaAvisoPrivacidad = DateTime.UtcNow,
             FechaCreacion = DateTime.UtcNow
         };
 
         _db.Usuarios.Add(nuevoUsuario);
 
-        var rawRefreshToken = CryptoTokenHelper.GenerateSecureToken();
-        var refreshTokenEntity = new RefreshToken
+        var rawVerificationToken = CryptoTokenHelper.GenerateSecureToken();
+        var verificationTokenEntity = new TokenVerificacionCorreo
         {
             Id = Guid.NewGuid(),
             UsuarioId = nuevoUsuario.Id,
-            TokenHash = CryptoTokenHelper.HashToken(rawRefreshToken),
-            FechaExpiracion = DateTime.UtcNow.AddDays(30),
-            Revocado = false
+            TokenHash = CryptoTokenHelper.HashToken(rawVerificationToken),
+            FechaExpiracion = DateTime.UtcNow.AddHours(24),
+            Usado = false,
+            FechaCreacion = DateTime.UtcNow
         };
 
-        _db.RefreshTokens.Add(refreshTokenEntity);
+        _db.TokensVerificacionCorreo.Add(verificationTokenEntity);
         await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        var tokenData = _jwt.CreateAccessToken(nuevoUsuario.Id.ToString(), rolUsuario.Nombre);
+        await _emailService.SendEmailVerificationAsync(
+            nuevoUsuario.Correo,
+            nuevoUsuario.NombreCompleto,
+            rawVerificationToken,
+            cancellationToken).ConfigureAwait(false);
 
         return new AuthResponseDto(
             new UsuarioPerfilResumenDto(nuevoUsuario.Id, nuevoUsuario.NombreCompleto, nuevoUsuario.Correo, rolUsuario.Nombre),
-            tokenData.Token,
-            rawRefreshToken,
-            AccessTokenDurationSeconds
+            accessToken: null,
+            refreshToken: null,
+            expiraEnSegundos: 0,
+            requiereVerificacion: true,
+            mensaje: "Cuenta registrada con éxito. Se ha enviado un correo con instrucciones para verificar tu dirección antes de iniciar sesión."
         );
     }
 
@@ -141,7 +152,7 @@ internal sealed class AuthService : IAuthService
 
         var user = await _db.Usuarios
             .Include(u => u.Rol)
-            .FirstOrDefaultAsync(u => u.Correo == identificador && u.Activo, cancellationToken)
+            .FirstOrDefaultAsync(u => u.Correo == identificador, cancellationToken)
             .ConfigureAwait(false);
 
         if (user is null)
@@ -151,6 +162,17 @@ internal sealed class AuthService : IAuthService
         }
 
         if (!_hasher.Verify(user.PasswordHash, password))
+        {
+            throw new UnauthorizedException();
+        }
+
+        // Si la cuenta requiere verificación de correo y aún no se verifica
+        if (!user.CorreoVerificado && !user.Activo)
+        {
+            throw new BadHttpRequestException("Debe verificar su correo electrónico antes de iniciar sesión.");
+        }
+
+        if (!user.Activo)
         {
             throw new UnauthorizedException();
         }
@@ -383,6 +405,115 @@ internal sealed class AuthService : IAuthService
         await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         return new MessageResponseDto("Contraseña actualizada correctamente. Inicia sesión con tu nueva clave.");
+    }
+
+    // -------------------------------------------------------------------------
+    // Verificación de correo electrónico
+    // -------------------------------------------------------------------------
+    public async Task<VerificacionCorreoResponseDto> VerificarCorreoAsync(string token, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            throw new BadHttpRequestException("El token de verificación es obligatorio.");
+        }
+
+        var tokenHash = CryptoTokenHelper.HashToken(token);
+        var verificationToken = await _db.TokensVerificacionCorreo
+            .Include(t => t.Usuario)
+            .FirstOrDefaultAsync(t => t.TokenHash == tokenHash, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (verificationToken is null)
+        {
+            throw new BadHttpRequestException("El enlace de verificación es inválido o no existe.");
+        }
+
+        if (verificationToken.Usado)
+        {
+            var userPreverificado = verificationToken.Usuario;
+            if (userPreverificado?.CorreoVerificado == true)
+            {
+                return new VerificacionCorreoResponseDto(true, "Tu correo electrónico ya había sido verificado anteriormente. Puedes iniciar sesión.");
+            }
+            throw new BadHttpRequestException("El enlace de verificación ya ha sido utilizado.");
+        }
+
+        if (verificationToken.FechaExpiracion <= DateTime.UtcNow)
+        {
+            throw new BadHttpRequestException("El enlace de verificación ha expirado. Por favor solicita uno nuevo.");
+        }
+
+        var usuario = verificationToken.Usuario;
+        if (usuario is null)
+        {
+            throw new BadHttpRequestException("No se encontró la cuenta asociada a este enlace.");
+        }
+
+        verificationToken.Usado = true;
+        verificationToken.FechaUso = DateTime.UtcNow;
+
+        usuario.CorreoVerificado = true;
+        usuario.FechaVerificacionCorreo = DateTime.UtcNow;
+        usuario.Activo = true;
+        usuario.FechaActualizacion = DateTime.UtcNow;
+
+        await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        return new VerificacionCorreoResponseDto(true, "¡Correo verificado con éxito! Tu cuenta ha sido activada y ya puedes iniciar sesión en BusTrack.");
+    }
+
+    // -------------------------------------------------------------------------
+    // Reenvío de correo de verificación
+    // -------------------------------------------------------------------------
+    public async Task<MessageResponseDto> ReenviarVerificacionAsync(ReenviarVerificacionRequestDto dto, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(dto);
+        if (string.IsNullOrWhiteSpace(dto.correo) || !PasswordPolicy.IsValidEmail(dto.correo.Trim()))
+        {
+            throw new BadHttpRequestException("El correo electrónico es obligatorio y debe tener un formato válido.");
+        }
+
+        var correoNorm = dto.correo.Trim().ToLowerInvariant();
+        var user = await _db.Usuarios.FirstOrDefaultAsync(u => u.Correo == correoNorm, cancellationToken).ConfigureAwait(false);
+
+        // Si la cuenta existe y aún NO está verificada
+        if (user is not null && !user.CorreoVerificado)
+        {
+            // Invalidar tokens anteriores pendientes
+            var pendientes = await _db.TokensVerificacionCorreo
+                .Where(t => t.UsuarioId == user.Id && !t.Usado)
+                .ToListAsync(cancellationToken)
+                .ConfigureAwait(false);
+
+            foreach (var t in pendientes)
+            {
+                t.Usado = true;
+                t.FechaUso = DateTime.UtcNow;
+            }
+
+            var rawVerificationToken = CryptoTokenHelper.GenerateSecureToken();
+            var nuevoToken = new TokenVerificacionCorreo
+            {
+                Id = Guid.NewGuid(),
+                UsuarioId = user.Id,
+                TokenHash = CryptoTokenHelper.HashToken(rawVerificationToken),
+                FechaExpiracion = DateTime.UtcNow.AddHours(24),
+                Usado = false,
+                FechaCreacion = DateTime.UtcNow
+            };
+
+            _db.TokensVerificacionCorreo.Add(nuevoToken);
+            await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+            await _emailService.SendEmailVerificationAsync(
+                user.Correo,
+                user.NombreCompleto,
+                rawVerificationToken,
+                cancellationToken).ConfigureAwait(false);
+        }
+
+        // Respuesta genérica anti-enumeración
+        return new MessageResponseDto("Si el correo corresponde a una cuenta pendiente de verificación, recibirás un nuevo enlace.");
     }
 
     // -------------------------------------------------------------------------

@@ -24,6 +24,10 @@ public interface IBusTrackNoSqlStore
     Task InvalidateActiveRecoveryTokensAsync(Guid usuarioId, CancellationToken ct);
     Task CreateRecoveryTokenAsync(TokenRecuperacionDoc token, CancellationToken ct);
     Task UpdateRecoveryTokenAsync(TokenRecuperacionDoc token, CancellationToken ct);
+    Task<TokenVerificacionCorreoDoc?> GetVerificationTokenByHashAsync(string tokenHash, CancellationToken ct);
+    Task InvalidateActiveVerificationTokensAsync(Guid usuarioId, CancellationToken ct);
+    Task CreateVerificationTokenAsync(TokenVerificacionCorreoDoc token, CancellationToken ct);
+    Task UpdateVerificationTokenAsync(TokenVerificacionCorreoDoc token, CancellationToken ct);
     Task<BloqueoLoginDoc?> GetLoginLockAsync(string key, CancellationToken ct);
     Task UpsertLoginLockAsync(BloqueoLoginDoc doc, CancellationToken ct);
     Task DeleteLoginLockAsync(string key, CancellationToken ct);

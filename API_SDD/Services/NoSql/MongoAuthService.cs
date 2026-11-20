@@ -86,28 +86,37 @@ internal sealed class MongoAuthService : IAuthService
             Correo = correoNorm,
             PasswordHash = _hasher.Hash(dto.password),
             RolNombre = "Usuario",
-            Activo = true,
+            Activo = false,
+            CorreoVerificado = false,
             FechaAvisoPrivacidad = now,
             FechaCreacion = now,
         };
         await _store.CreateUsuarioAsync(user, cancellationToken).ConfigureAwait(false);
 
-        var rawRefresh = CryptoTokenHelper.GenerateSecureToken();
-        await _store.CreateRefreshTokenAsync(new RefreshTokenDoc
+        var rawVerification = CryptoTokenHelper.GenerateSecureToken();
+        await _store.CreateVerificationTokenAsync(new TokenVerificacionCorreoDoc
         {
             Id = Guid.NewGuid(),
             UsuarioId = user.Id,
-            TokenHash = CryptoTokenHelper.HashToken(rawRefresh),
-            FechaExpiracion = now.AddDays(30),
-            Revocado = false,
+            TokenHash = CryptoTokenHelper.HashToken(rawVerification),
+            FechaExpiracion = now.AddHours(24),
+            Usado = false,
+            FechaCreacion = now,
         }, cancellationToken).ConfigureAwait(false);
 
-        var issued = _jwt.CreateAccessToken(user.Id.ToString(), user.RolNombre);
+        await _email.SendEmailVerificationAsync(
+            user.Correo,
+            user.NombreCompleto,
+            rawVerification,
+            cancellationToken).ConfigureAwait(false);
+
         return new AuthResponseDto(
             new UsuarioPerfilResumenDto(user.Id, user.NombreCompleto, user.Correo, user.RolNombre),
-            issued.Token,
-            rawRefresh,
-            AccessTokenDurationSeconds);
+            accessToken: null,
+            refreshToken: null,
+            expiraEnSegundos: 0,
+            requiereVerificacion: true,
+            mensaje: "Cuenta registrada con éxito. Se ha enviado un correo con instrucciones para verificar tu dirección antes de iniciar sesión.");
     }
 
     public async Task<AuthResponseDto> LoginV2Async(LoginInputDto dto, CancellationToken cancellationToken)
@@ -128,7 +137,7 @@ internal sealed class MongoAuthService : IAuthService
         }
 
         var user = await _store.GetUsuarioByEmailAsync(identificador, cancellationToken).ConfigureAwait(false);
-        if (user is null || !user.Activo)
+        if (user is null)
         {
             _hasher.Verify(FakeHash, password);
             await RecordFailureAsync(identificador, gate, now, cancellationToken).ConfigureAwait(false);
@@ -138,6 +147,17 @@ internal sealed class MongoAuthService : IAuthService
         if (!_hasher.Verify(user.PasswordHash, password))
         {
             await RecordFailureAsync(identificador, gate, now, cancellationToken).ConfigureAwait(false);
+            throw new UnauthorizedException();
+        }
+
+        // Si la cuenta requiere verificación y aún no se verifica
+        if (!user.CorreoVerificado && !user.Activo)
+        {
+            throw new BadHttpRequestException("Debe verificar su correo electrónico antes de iniciar sesión.");
+        }
+
+        if (!user.Activo)
+        {
             throw new UnauthorizedException();
         }
 
@@ -329,6 +349,93 @@ internal sealed class MongoAuthService : IAuthService
         return new MessageResponseDto("Contraseña actualizada correctamente. Inicia sesión con tu nueva clave.");
     }
 
+    public async Task<VerificacionCorreoResponseDto> VerificarCorreoAsync(string token, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            throw new BadHttpRequestException("El token de verificación es obligatorio.");
+        }
+
+        var tokenHash = CryptoTokenHelper.HashToken(token);
+        var verificationToken = await _store.GetVerificationTokenByHashAsync(tokenHash, cancellationToken).ConfigureAwait(false);
+
+        if (verificationToken is null)
+        {
+            throw new BadHttpRequestException("El enlace de verificación es inválido o no existe.");
+        }
+
+        var now = _time.GetUtcNow().UtcDateTime;
+        if (verificationToken.Usado)
+        {
+            var userPreverificado = await _store.GetUsuarioByIdAsync(verificationToken.UsuarioId, cancellationToken).ConfigureAwait(false);
+            if (userPreverificado?.CorreoVerificado == true)
+            {
+                return new VerificacionCorreoResponseDto(true, "Tu correo electrónico ya había sido verificado anteriormente. Puedes iniciar sesión.");
+            }
+            throw new BadHttpRequestException("El enlace de verificación ya ha sido utilizado.");
+        }
+
+        if (verificationToken.FechaExpiracion <= now)
+        {
+            throw new BadHttpRequestException("El enlace de verificación ha expirado. Por favor solicita uno nuevo.");
+        }
+
+        var usuario = await _store.GetUsuarioByIdAsync(verificationToken.UsuarioId, cancellationToken).ConfigureAwait(false);
+        if (usuario is null)
+        {
+            throw new BadHttpRequestException("No se encontró la cuenta asociada a este enlace.");
+        }
+
+        verificationToken.Usado = true;
+        verificationToken.FechaUso = now;
+        await _store.UpdateVerificationTokenAsync(verificationToken, cancellationToken).ConfigureAwait(false);
+
+        usuario.CorreoVerificado = true;
+        usuario.FechaVerificacionCorreo = now;
+        usuario.Activo = true;
+        usuario.FechaActualizacion = now;
+        await _store.UpdateUsuarioAsync(usuario, cancellationToken).ConfigureAwait(false);
+
+        return new VerificacionCorreoResponseDto(true, "¡Correo verificado con éxito! Tu cuenta ha sido activada y ya puedes iniciar sesión en BusTrack.");
+    }
+
+    public async Task<MessageResponseDto> ReenviarVerificacionAsync(ReenviarVerificacionRequestDto dto, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(dto);
+        if (string.IsNullOrWhiteSpace(dto.correo) || !PasswordPolicy.IsValidEmail(dto.correo.Trim()))
+        {
+            throw new BadHttpRequestException("El correo electrónico es obligatorio y debe tener un formato válido.");
+        }
+
+        var correoNorm = dto.correo.Trim().ToLowerInvariant();
+        var user = await _store.GetUsuarioByEmailAsync(correoNorm, cancellationToken).ConfigureAwait(false);
+
+        if (user is not null && !user.CorreoVerificado)
+        {
+            await _store.InvalidateActiveVerificationTokensAsync(user.Id, cancellationToken).ConfigureAwait(false);
+
+            var rawVerification = CryptoTokenHelper.GenerateSecureToken();
+            var now = _time.GetUtcNow().UtcDateTime;
+            await _store.CreateVerificationTokenAsync(new TokenVerificacionCorreoDoc
+            {
+                Id = Guid.NewGuid(),
+                UsuarioId = user.Id,
+                TokenHash = CryptoTokenHelper.HashToken(rawVerification),
+                FechaExpiracion = now.AddHours(24),
+                Usado = false,
+                FechaCreacion = now,
+            }, cancellationToken).ConfigureAwait(false);
+
+            await _email.SendEmailVerificationAsync(
+                user.Correo,
+                user.NombreCompleto,
+                rawVerification,
+                cancellationToken).ConfigureAwait(false);
+        }
+
+        return new MessageResponseDto("Si el correo corresponde a una cuenta pendiente de verificación, recibirás un nuevo enlace.");
+    }
+
     public async Task<LoginResponseDto> LoginAsync(LoginRequestDto dto, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(dto);
@@ -337,7 +444,7 @@ internal sealed class MongoAuthService : IAuthService
             new LoginInputDto(dto.strNombreUsuario, dto.strPWD, null, null, "legacy"),
             cancellationToken).ConfigureAwait(false);
         var exp = _time.GetUtcNow().UtcDateTime.AddSeconds(res.expiraEnSegundos);
-        return new LoginResponseDto(res.accessToken, exp);
+        return new LoginResponseDto(res.accessToken ?? string.Empty, exp);
     }
 
     private Task RecordFailureAsync(string key, BloqueoLoginDoc? current, DateTime now, CancellationToken ct)

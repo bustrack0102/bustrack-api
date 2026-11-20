@@ -28,4 +28,10 @@ public interface IAuthService
 
     // EP-AU-06: Restablecimiento de contraseña
     Task<MessageResponseDto> RestablecerPasswordAsync(RestablecerPasswordRequestDto dto, CancellationToken cancellationToken);
+
+    // Verificación de correo electrónico
+    Task<VerificacionCorreoResponseDto> VerificarCorreoAsync(string token, CancellationToken cancellationToken);
+
+    // Reenvío de correo de verificación
+    Task<MessageResponseDto> ReenviarVerificacionAsync(ReenviarVerificacionRequestDto dto, CancellationToken cancellationToken);
 }

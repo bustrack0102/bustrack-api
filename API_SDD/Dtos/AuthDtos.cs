@@ -20,9 +20,11 @@ public sealed record UsuarioPerfilResumenDto(
 
 public sealed record AuthResponseDto(
     UsuarioPerfilResumenDto usuario,
-    string accessToken,
-    string refreshToken,
-    int expiraEnSegundos
+    string? accessToken = null,
+    string? refreshToken = null,
+    int expiraEnSegundos = 0,
+    bool requiereVerificacion = false,
+    string? mensaje = null
 );
 
 // EP-AU-02: Login unificado
@@ -65,5 +67,15 @@ public sealed record RestablecerPasswordRequestDto(
 
 // Respuestas genéricas de mensaje
 public sealed record MessageResponseDto(
+    string mensaje
+);
+
+// Nuevos endpoints de verificación de correo
+public sealed record ReenviarVerificacionRequestDto(
+    string correo
+);
+
+public sealed record VerificacionCorreoResponseDto(
+    bool verificado,
     string mensaje
 );

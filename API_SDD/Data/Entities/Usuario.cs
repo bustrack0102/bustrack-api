@@ -31,6 +31,10 @@ public sealed class Usuario
 
     public bool Activo { get; set; } = true;
 
+    public bool CorreoVerificado { get; set; } = false;
+
+    public DateTime? FechaVerificacionCorreo { get; set; }
+
     public bool ConsentimientoSensores { get; set; } = false;
 
     public DateTime? FechaAvisoPrivacidad { get; set; }
@@ -44,4 +48,6 @@ public sealed class Usuario
     public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
 
     public ICollection<TokenRecuperacion> TokensRecuperacion { get; set; } = new List<TokenRecuperacion>();
+
+    public ICollection<TokenVerificacionCorreo> TokensVerificacionCorreo { get; set; } = new List<TokenVerificacionCorreo>();
 }

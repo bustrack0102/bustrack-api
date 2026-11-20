@@ -23,6 +23,8 @@
 | POST | `/api/v1/auth/logout` | JWT | Global | 200/204/401/429 | 14-endpoint-logout (EP-AU-04) |
 | POST | `/api/v1/auth/recuperar-password` | no | Login | 200/400/429 | 42-endpoint-auth-recuperar-password (EP-AU-05) |
 | POST | `/api/v1/auth/restablecer-password` | no | Login | 200/400/422/429 | 43-endpoint-auth-restablecer-password (EP-AU-06) |
+| GET | `/api/v1/auth/verificar-correo` | no | Login / Auth | 200/400/429 | 56-endpoint-auth-verificar-correo (EP-AU-11) |
+| POST | `/api/v1/auth/reenviar-verificacion` | no | Login / Auth | 200/400/429 | 57-endpoint-auth-reenviar-verificacion (EP-AU-12) |
 | GET | `/api/v1/usuarios/me` | JWT | Global | 200/401/404/429 | 44-endpoint-usuario-perfil-me (EP-AU-07) |
 | PUT | `/api/v1/usuarios/me` | JWT | ConcurrentWrites | 200/400/401/409/422/429 | 45-endpoint-usuario-perfil-editar (EP-AU-08) |
 | DELETE | `/api/v1/usuarios/me` | JWT | ConcurrentWrites | 200/400/401/429 | 46-endpoint-usuario-perfil-baja (EP-AU-09) |

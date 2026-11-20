@@ -11,6 +11,7 @@ internal sealed class InMemoryBusTrackStore : IBusTrackNoSqlStore
     private readonly ConcurrentDictionary<Guid, UsuarioDoc> _usuarios = new();
     private readonly ConcurrentDictionary<Guid, RefreshTokenDoc> _refreshTokens = new();
     private readonly ConcurrentDictionary<Guid, TokenRecuperacionDoc> _recoveryTokens = new();
+    private readonly ConcurrentDictionary<Guid, TokenVerificacionCorreoDoc> _verificationTokens = new();
     private readonly ConcurrentDictionary<string, BloqueoLoginDoc> _locks = new(StringComparer.OrdinalIgnoreCase);
 
     private readonly ConcurrentDictionary<int, MedioTransporteDoc> _medios = new();
@@ -162,6 +163,33 @@ internal sealed class InMemoryBusTrackStore : IBusTrackNoSqlStore
     {
         ArgumentNullException.ThrowIfNull(token);
         _recoveryTokens[token.Id] = token;
+        return Task.CompletedTask;
+    }
+
+    public Task<TokenVerificacionCorreoDoc?> GetVerificationTokenByHashAsync(string tokenHash, CancellationToken ct) =>
+        Task.FromResult(_verificationTokens.Values.FirstOrDefault(t => t.TokenHash == tokenHash));
+
+    public Task InvalidateActiveVerificationTokensAsync(Guid usuarioId, CancellationToken ct)
+    {
+        foreach (var t in _verificationTokens.Values.Where(x => x.UsuarioId == usuarioId && !x.Usado))
+        {
+            t.Usado = true;
+        }
+
+        return Task.CompletedTask;
+    }
+
+    public Task CreateVerificationTokenAsync(TokenVerificacionCorreoDoc token, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(token);
+        _ = _verificationTokens.TryAdd(token.Id, token);
+        return Task.CompletedTask;
+    }
+
+    public Task UpdateVerificationTokenAsync(TokenVerificacionCorreoDoc token, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(token);
+        _verificationTokens[token.Id] = token;
         return Task.CompletedTask;
     }
 

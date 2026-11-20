@@ -432,6 +432,7 @@ resource "azurerm_container_app" "api" {
         path             = "/health"
         initial_delay    = 10
         interval_seconds = 30
+        timeout          = 5
       }
 
       readiness_probe {
@@ -439,6 +440,7 @@ resource "azurerm_container_app" "api" {
         port             = 8000
         path             = "/health/ready"
         interval_seconds = 30
+        timeout          = 10
       }
     }
   }

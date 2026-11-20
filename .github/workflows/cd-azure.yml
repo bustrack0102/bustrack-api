@@ -85,14 +85,32 @@ jobs:
           echo "IMAGE_TAG=$TAG" >> $GITHUB_ENV
 
       - name: Deploy bustrack-api (Container App if present, otherwise ACI)
+        env:
+          MONGODB_CONNECTION_STRING: ${{ secrets.MONGODB_CONNECTION_STRING }}
+          JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
+          INTERNAL_SERVICE_KEY: ${{ secrets.INTERNAL_SERVICE_KEY }}
         run: |
+          for required in MONGODB_CONNECTION_STRING JWT_SECRET_KEY INTERNAL_SERVICE_KEY; do
+            if [ -z "${!required}" ]; then
+              echo "::error::Falta el secreto $required en GitHub Secrets."
+              exit 1
+            fi
+          done
+          if printf '%s' "$MONGODB_CONNECTION_STRING" | grep -qiE 'REEMPLAZAR|EXTERNA'; then
+            echo "::error::MONGODB_CONNECTION_STRING contiene un placeholder (REEMPLAZAR/EXTERNA)."
+            exit 1
+          fi
+          if ! printf '%s' "$MONGODB_CONNECTION_STRING" | grep -qE '^mongodb(\+srv)?://'; then
+            echo "::error::MONGODB_CONNECTION_STRING no es una URI mongodb:// o mongodb+srv:// válida."
+            exit 1
+          fi
           if az containerapp show -g rg-bustrack-ncus -n bustrack-api -o none 2>/dev/null; then
             echo "Actualizando Azure Container App bustrack-api..."
             az containerapp secret set -g rg-bustrack-ncus -n bustrack-api \
               --secrets \
-                mongodb-cs="${{ secrets.MONGODB_CONNECTION_STRING }}" \
-                jwt-key="${{ secrets.JWT_SECRET_KEY }}" \
-                internal-key="${{ secrets.INTERNAL_SERVICE_KEY }}" -o none
+                mongodb-cs="$MONGODB_CONNECTION_STRING" \
+                jwt-key="$JWT_SECRET_KEY" \
+                internal-key="$INTERNAL_SERVICE_KEY" -o none
             az containerapp update -g rg-bustrack-ncus -n bustrack-api \
               --image "$IMAGE_TAG" \
               --set-env-vars \
@@ -107,6 +125,7 @@ jobs:
                 EnableHttpsRedirection=false -o none
             FQDN=$(az containerapp show -g rg-bustrack-ncus -n bustrack-api --query "properties.configuration.ingress.fqdn" -o tsv)
             echo "API_URL=https://${FQDN}" >> $GITHUB_ENV
+            echo "DEPLOY_TARGET=containerapp" >> $GITHUB_ENV
           else
             echo "Desplegando bustrack-api en ACI (etapa de transición)..."
             az container create \
@@ -129,15 +148,29 @@ jobs:
                 MongoDb__Database=BusTrackNoSQL \
                 EnableHttpsRedirection=false \
               --secure-environment-variables \
-                MongoDb__ConnectionString="${{ secrets.MONGODB_CONNECTION_STRING }}" \
-                Jwt__Key="${{ secrets.JWT_SECRET_KEY }}" \
-                InternalService__Key="${{ secrets.INTERNAL_SERVICE_KEY }}" -o none
+                MongoDb__ConnectionString="$MONGODB_CONNECTION_STRING" \
+                Jwt__Key="$JWT_SECRET_KEY" \
+                InternalService__Key="$INTERNAL_SERVICE_KEY" -o none
             echo "API_URL=http://bustrack-api-uttt.northcentralus.azurecontainer.io:8000" >> $GITHUB_ENV
+            echo "DEPLOY_TARGET=aci" >> $GITHUB_ENV
           fi
+
+      - name: Mostrar IPs de salida (para MongoDB Atlas Network Access)
+        if: env.DEPLOY_TARGET == 'containerapp'
+        run: |
+          echo "Si /health/ready falla con mongodb Unhealthy, agrega estas IPs en Atlas > Network Access:"
+          az containerapp env show -g rg-bustrack-ncus -n cae-bustrack-ncus --query "properties.outboundIpAddresses" -o tsv || true
 
       - name: Smoke Test & Readiness Gate (/health + /health/ready + /api/v1/ping)
         run: |
           echo "Verificando $API_URL..."
+          dump_logs() {
+            if [ "$DEPLOY_TARGET" = "containerapp" ]; then
+              az containerapp logs show -g rg-bustrack-ncus -n bustrack-api --tail 40 || true
+            else
+              az container logs -g rg-bustrack-ncus -n bustrack-api || true
+            fi
+          }
           HEALTHY=0
           for i in $(seq 1 30); do
             STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$API_URL/health" || echo "000")
@@ -147,9 +180,21 @@ jobs:
             fi
             sleep 10
           done
-          [ "$HEALTHY" -eq 1 ] || { az container logs -g rg-bustrack-ncus -n bustrack-api || true; exit 1; }
+          if [ "$HEALTHY" -ne 1 ]; then
+            echo "Error: /health no respondió 200"
+            dump_logs
+            exit 1
+          fi
           READY_CODE=$(curl -s -o /tmp/ready.json -w "%{http_code}" --max-time 15 "$API_URL/health/ready" || echo "000")
-          cat /tmp/ready.json
-          [ "$READY_CODE" -eq 200 ] || { az container logs -g rg-bustrack-ncus -n bustrack-api --tail 40 || true; echo "Error: /health/ready retornó HTTP $READY_CODE"; exit 1; }
-          grep -q '"status":"Healthy"' /tmp/ready.json || { az container logs -g rg-bustrack-ncus -n bustrack-api --tail 40 || true; echo "Error: /health/ready no está Healthy"; exit 1; }
+          cat /tmp/ready.json || true
+          if [ "$READY_CODE" -ne 200 ]; then
+            echo "Error: /health/ready retornó HTTP $READY_CODE"
+            dump_logs
+            exit 1
+          fi
+          if ! grep -q '"status":"Healthy"' /tmp/ready.json; then
+            echo "Error: /health/ready no está Healthy"
+            dump_logs
+            exit 1
+          fi
           curl -sf --max-time 10 "$API_URL/api/v1/ping"

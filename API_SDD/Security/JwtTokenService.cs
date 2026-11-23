@@ -47,9 +47,7 @@ internal sealed class JwtTokenService : IJwtTokenService
             throw new InvalidOperationException("Jwt:Audience is required.");
         }
 
-        var minutes = current.AccessTokenMinutes is >= 1 and <= 60
-            ? current.AccessTokenMinutes
-            : 15;
+        var minutes = JwtOptions.ResolveAccessTokenMinutes(current.AccessTokenMinutes);
         var now = _time.GetUtcNow().UtcDateTime;
         var expires = now.AddMinutes(minutes);
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(current.Key));

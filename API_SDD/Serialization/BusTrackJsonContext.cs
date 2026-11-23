@@ -12,6 +12,7 @@ namespace ApiSDD.Serialization;
     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
     GenerationMode = JsonSourceGenerationMode.Metadata)]
 [JsonSerializable(typeof(ErrorResponse))]
+[JsonSerializable(typeof(ApiSDD.Dtos.VerificarCorreoRequestDto))]
 [JsonSerializable(typeof(ApiSDD.Dtos.ReenviarVerificacionRequestDto))]
 [JsonSerializable(typeof(ApiSDD.Dtos.VerificacionCorreoResponseDto))]
 [JsonSerializable(typeof(Dictionary<string, object>))]

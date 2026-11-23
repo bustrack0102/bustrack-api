@@ -26,6 +26,7 @@ public sealed class EmpresasController : ControllerBase
     // GET /api/v1/empresas (EP-EM-01)
     [HttpGet]
     [AllowAnonymous]
+    [EnableRateLimiting("Global")]
     public async Task<IActionResult> List([FromQuery] EmpresaQueryDto query, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(query);
@@ -36,6 +37,7 @@ public sealed class EmpresasController : ControllerBase
     // GET /api/v1/empresas/autocompletar (EP-EM-02)
     [HttpGet("autocompletar")]
     [AllowAnonymous]
+    [EnableRateLimiting("Global")]
     public async Task<IActionResult> Autocomplete(
         [FromQuery] string q,
         [FromQuery] int limite = 10,
@@ -48,6 +50,7 @@ public sealed class EmpresasController : ControllerBase
     // GET /api/v1/empresas/comparar (EP-EM-05) - Rutas fijas antes de comodín {id}
     [HttpGet("comparar")]
     [AllowAnonymous]
+    [EnableRateLimiting("Global")]
     public async Task<IActionResult> Comparar(
         [FromQuery] string? paradaOrigenId = null,
         [FromQuery] string? paradaDestinoId = null,
@@ -62,6 +65,7 @@ public sealed class EmpresasController : ControllerBase
     // GET /api/v1/empresas/{id} (EP-EM-03)
     [HttpGet("{id}")]
     [AllowAnonymous]
+    [EnableRateLimiting("Global")]
     public async Task<IActionResult> Detail(string id, CancellationToken cancellationToken)
     {
         if (!Guid.TryParse(id, out var guid))
@@ -77,6 +81,7 @@ public sealed class EmpresasController : ControllerBase
     // GET /api/v1/empresas/{id}/rutas (EP-EM-04)
     [HttpGet("{id}/rutas")]
     [AllowAnonymous]
+    [EnableRateLimiting("Global")]
     public async Task<IActionResult> Rutas(
         string id,
         [FromQuery] int? medioTransporteId = null,

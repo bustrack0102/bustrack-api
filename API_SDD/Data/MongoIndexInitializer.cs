@@ -166,6 +166,27 @@ internal sealed partial class MongoIndexInitializer : IHostedService
                 Builders<BsonDocument>.IndexKeys.Ascending("expiraEnUtc"),
                 new CreateIndexOptions { Name = "ttl_cache_expira", ExpireAfter = TimeSpan.Zero }),
             ct).ConfigureAwait(false);
+
+        await CreateIndexSafeAsync(
+            _mongo.RawCollection("refresh_tokens"),
+            new CreateIndexModel<BsonDocument>(
+                Builders<BsonDocument>.IndexKeys.Ascending("fechaExpiracion"),
+                new CreateIndexOptions { Name = "ttl_refresh_tokens_expira", ExpireAfter = TimeSpan.Zero }),
+            ct).ConfigureAwait(false);
+
+        await CreateIndexSafeAsync(
+            _mongo.RawCollection("tokens_recuperacion"),
+            new CreateIndexModel<BsonDocument>(
+                Builders<BsonDocument>.IndexKeys.Ascending("fechaExpiracion"),
+                new CreateIndexOptions { Name = "ttl_tokens_recuperacion_expira", ExpireAfter = TimeSpan.Zero }),
+            ct).ConfigureAwait(false);
+
+        await CreateIndexSafeAsync(
+            _mongo.RawCollection("tokens_verificacion_correo"),
+            new CreateIndexModel<BsonDocument>(
+                Builders<BsonDocument>.IndexKeys.Ascending("fechaExpiracion"),
+                new CreateIndexOptions { Name = "ttl_tokens_verificacion_expira", ExpireAfter = TimeSpan.Zero }),
+            ct).ConfigureAwait(false);
     }
 
     private async Task CreateIndexSafeAsync(

@@ -67,8 +67,9 @@ internal sealed partial class BlobMediaService : IBlobMediaService
             return new MediaUploadResult(false, null, null, contentType, contentBytes.Length, decision.Proveedor, decision);
         }
 
+        var normalizedMime = DetectCanonicalMime(contentBytes, contentType);
         var safeCategory = SanitizeSegment(string.IsNullOrWhiteSpace(categoria) ? "general" : categoria);
-        var ext = ResolveExtension(contentType);
+        var ext = ResolveExtension(normalizedMime);
         var now = _time.GetUtcNow();
         var blobName = string.Create(
             CultureInfo.InvariantCulture,
@@ -81,7 +82,7 @@ internal sealed partial class BlobMediaService : IBlobMediaService
                 blobCs,
                 blobName,
                 contentBytes,
-                contentType,
+                normalizedMime,
                 ct).ConfigureAwait(false);
             if (!string.IsNullOrWhiteSpace(uploadedUrl))
             {
@@ -89,7 +90,7 @@ internal sealed partial class BlobMediaService : IBlobMediaService
                     true,
                     uploadedUrl,
                     DefaultCacheControl,
-                    contentType,
+                    normalizedMime,
                     contentBytes.Length,
                     "AzureBlobCdn",
                     decision);
@@ -101,7 +102,7 @@ internal sealed partial class BlobMediaService : IBlobMediaService
             true,
             localCdn,
             DefaultCacheControl,
-            contentType,
+            normalizedMime,
             contentBytes.Length,
             "EphemeralHttpsPlaceholder",
             decision);
@@ -154,6 +155,35 @@ internal sealed partial class BlobMediaService : IBlobMediaService
         var cleaned = NonSlugCharsRegex().Replace(lower, "-").Trim('-');
         return string.IsNullOrEmpty(cleaned) ? "general" : cleaned;
     }
+
+    private static string DetectCanonicalMime(byte[] bytes, string declaredContentType)
+    {
+        if (IsPng(bytes)) return "image/png";
+        if (IsJpeg(bytes)) return "image/jpeg";
+        if (IsWebp(bytes)) return "image/webp";
+        if (IsMp4(bytes)) return "video/mp4";
+        if (IsWebm(bytes)) return "video/webm";
+
+        return string.IsNullOrWhiteSpace(declaredContentType)
+            ? "application/octet-stream"
+            : declaredContentType.Trim().ToLowerInvariant();
+    }
+
+    private static bool IsPng(byte[] bytes) =>
+        bytes.Length >= 8 && bytes[0] == 0x89 && bytes[1] == 0x50 && bytes[2] == 0x4E && bytes[3] == 0x47;
+
+    private static bool IsJpeg(byte[] bytes) =>
+        bytes.Length >= 3 && bytes[0] == 0xFF && bytes[1] == 0xD8 && bytes[2] == 0xFF;
+
+    private static bool IsWebp(byte[] bytes) =>
+        bytes.Length >= 12 && bytes[0] == (byte)'R' && bytes[1] == (byte)'I' && bytes[2] == (byte)'F' && bytes[3] == (byte)'F'
+        && bytes[8] == (byte)'W' && bytes[9] == (byte)'E' && bytes[10] == (byte)'B' && bytes[11] == (byte)'P';
+
+    private static bool IsMp4(byte[] bytes) =>
+        bytes.Length >= 8 && bytes[4] == (byte)'f' && bytes[5] == (byte)'t' && bytes[6] == (byte)'y' && bytes[7] == (byte)'p';
+
+    private static bool IsWebm(byte[] bytes) =>
+        bytes.Length >= 4 && bytes[0] == 0x1A && bytes[1] == 0x45 && bytes[2] == 0xDF && bytes[3] == 0xA3;
 
     private static string ResolveExtension(string contentType) =>
         (contentType ?? string.Empty).Trim().ToLowerInvariant() switch

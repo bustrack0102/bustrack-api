@@ -16,7 +16,6 @@ internal sealed class MongoAuthService : IAuthService
 {
     private const int MaxAttempts = 5;
     private const int LockMinutes = 15;
-    private const int AccessTokenDurationSeconds = 900;
 
     private const string FakeHash =
         "$argon2id$v=19$m=65536,t=3,p=4$AAAAAAAAAAAAAAAAAAAAAA$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
@@ -29,6 +28,7 @@ internal sealed class MongoAuthService : IAuthService
     private readonly TimeProvider _time;
     private readonly IValidator<LoginRequestDto> _validator;
     private readonly bool _skipEmailVerification;
+    private readonly int _accessTokenDurationSeconds;
 
     public MongoAuthService(
         IBusTrackNoSqlStore store,
@@ -48,6 +48,8 @@ internal sealed class MongoAuthService : IAuthService
         _time = time ?? throw new ArgumentNullException(nameof(time));
         _validator = validator ?? throw new ArgumentNullException(nameof(validator));
         _skipEmailVerification = configuration?.GetValue<bool>("Auth:SkipEmailVerification") ?? false;
+        _accessTokenDurationSeconds =
+            JwtOptions.ResolveAccessTokenMinutes(configuration?.GetValue<int?>("Jwt:AccessTokenMinutes")) * 60;
     }
 
     public async Task<AuthResponseDto> RegistroAsync(RegistroRequestDto dto, CancellationToken cancellationToken)
@@ -145,7 +147,7 @@ internal sealed class MongoAuthService : IAuthService
             new UsuarioPerfilResumenDto(user.Id, user.NombreCompleto, user.Correo, user.RolNombre),
             tokenDataDirect.Token,
             rawRefreshDirect,
-            AccessTokenDurationSeconds);
+            _accessTokenDurationSeconds);
     }
 
     public async Task<AuthResponseDto> LoginV2Async(LoginInputDto dto, CancellationToken cancellationToken)
@@ -219,7 +221,7 @@ internal sealed class MongoAuthService : IAuthService
             new UsuarioPerfilResumenDto(user.Id, user.NombreCompleto, user.Correo, user.RolNombre),
             issued.Token,
             rawRefresh,
-            AccessTokenDurationSeconds);
+            _accessTokenDurationSeconds);
     }
 
     public async Task<TokenRefreshResponseDto> RefreshAsync(RefreshTokenRequestDto dto, CancellationToken cancellationToken)
@@ -235,7 +237,20 @@ internal sealed class MongoAuthService : IAuthService
             CryptoTokenHelper.HashToken(dto.refreshToken),
             cancellationToken).ConfigureAwait(false);
 
-        if (existing is null || existing.Revocado || existing.FechaExpiracion <= now)
+        if (existing is null)
+        {
+            throw new UnauthorizedException();
+        }
+
+        // Reuso de un token ya rotado/revocado: posible robo -> invalidar toda la familia.
+        if (existing.Revocado)
+        {
+            await _store.RevokeAllRefreshTokensForUserAsync(existing.UsuarioId, now, cancellationToken)
+                .ConfigureAwait(false);
+            throw new UnauthorizedException();
+        }
+
+        if (existing.FechaExpiracion <= now)
         {
             throw new UnauthorizedException();
         }
@@ -264,7 +279,7 @@ internal sealed class MongoAuthService : IAuthService
         await _store.CreateRefreshTokenAsync(replacement, cancellationToken).ConfigureAwait(false);
 
         var issued = _jwt.CreateAccessToken(user.Id.ToString(), user.RolNombre);
-        return new TokenRefreshResponseDto(issued.Token, newRawRefresh, AccessTokenDurationSeconds);
+        return new TokenRefreshResponseDto(issued.Token, newRawRefresh, _accessTokenDurationSeconds);
     }
 
     public async Task<MessageResponseDto> LogoutV2Async(

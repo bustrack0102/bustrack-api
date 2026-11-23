@@ -31,6 +31,11 @@ internal sealed class ExceptionHandlingMiddleware
         {
             await _next(context).ConfigureAwait(false);
         }
+        catch (OperationCanceledException ex) when (context.RequestAborted.IsCancellationRequested)
+        {
+            // El cliente cerró la conexión: no hay a quién responder y escribir lanzaría de nuevo.
+            LogClientDisconnected(_logger, context.TraceIdentifier, ex);
+        }
         catch (Exception ex)
         {
             if (context.Response.HasStarted)
@@ -71,4 +76,10 @@ internal sealed class ExceptionHandlingMiddleware
             LogLevel.Error,
             new EventId(1, nameof(WriteErrorAsync)),
             "Unhandled exception {TraceId} mapped to {Status}");
+
+    private static readonly Action<ILogger, string, Exception?> LogClientDisconnected =
+        LoggerMessage.Define<string>(
+            LogLevel.Information,
+            new EventId(2, "ClientDisconnected"),
+            "Client disconnected during request {TraceId}");
 }

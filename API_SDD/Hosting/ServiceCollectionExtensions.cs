@@ -99,16 +99,18 @@ internal static class ServiceCollectionExtensions
                     ApiJson.Options,
                     token));
             };
-            o.AddFixedWindowLimiter("Global", options => FixedWindow(options, global, 1));
-            o.AddFixedWindowLimiter("Login", options => FixedWindow(options, login, 5));
-            o.AddFixedWindowLimiter("Login2faVerify", options => FixedWindow(options, login2fa, 5));
-            o.AddFixedWindowLimiter("Admin", options => FixedWindow(options, admin, 1));
-            o.AddConcurrencyLimiter("ConcurrentWrites", options =>
-            {
-                options.PermitLimit = concurrent;
-                options.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-                options.QueueLimit = 0;
-            });
+            o.AddPolicy("Global", context => FixedWindowPartition(context, global, 1));
+            o.AddPolicy("Login", context => FixedWindowPartition(context, login, 5));
+            o.AddPolicy("Login2faVerify", context => FixedWindowPartition(context, login2fa, 5));
+            o.AddPolicy("Admin", context => FixedWindowPartition(context, admin, 1));
+            o.AddPolicy("ConcurrentWrites", context => RateLimitPartition.GetConcurrencyLimiter(
+                ClientPartitionKey(context),
+                _ => new ConcurrencyLimiterOptions
+                {
+                    PermitLimit = concurrent,
+                    QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                    QueueLimit = 0,
+                }));
         });
 
         if (configuration.GetValue("UseJwtBearer", true))
@@ -214,14 +216,29 @@ internal static class ServiceCollectionExtensions
             }
             else
             {
+                if (environment.IsProduction() && !isMongoPrimary)
+                {
+                    throw new InvalidOperationException(
+                        "Redis:ConnectionString es obligatorio en producción cuando se utiliza persistencia relacional.");
+                }
+
                 services.AddOptions();
                 services.AddSingleton<MemoryDistributedCache>();
                 services.AddSingleton<IDistributedCache>(sp =>
                 {
                     var mongo = sp.GetRequiredService<ApiSDD.Data.MongoDbContext>();
-                    return mongo.IsConfigured
-                        ? new ApiSDD.Data.NoSql.MongoDistributedCache(mongo, sp.GetRequiredService<TimeProvider>())
-                        : sp.GetRequiredService<MemoryDistributedCache>();
+                    if (mongo.IsConfigured)
+                    {
+                        return new ApiSDD.Data.NoSql.MongoDistributedCache(mongo, sp.GetRequiredService<TimeProvider>());
+                    }
+
+                    if (environment.IsProduction())
+                    {
+                        throw new InvalidOperationException(
+                            "Almacén distribuido no disponible en producción: ni Redis ni MongoDB están configurados.");
+                    }
+
+                    return sp.GetRequiredService<MemoryDistributedCache>();
                 });
             }
 
@@ -230,9 +247,18 @@ internal static class ServiceCollectionExtensions
             services.AddSingleton<ApiSDD.Data.NoSql.IBusTrackNoSqlStore>(sp =>
             {
                 var mongo = sp.GetRequiredService<ApiSDD.Data.MongoDbContext>();
-                return mongo.IsConfigured
-                    ? sp.GetRequiredService<ApiSDD.Data.NoSql.MongoBusTrackStore>()
-                    : sp.GetRequiredService<ApiSDD.Data.NoSql.InMemoryBusTrackStore>();
+                if (mongo.IsConfigured)
+                {
+                    return sp.GetRequiredService<ApiSDD.Data.NoSql.MongoBusTrackStore>();
+                }
+
+                if (environment.IsProduction() && isMongoPrimary)
+                {
+                    throw new InvalidOperationException(
+                        "MongoDb:ConnectionString es inválido o no está configurado en producción con persistencia MongoDB.");
+                }
+
+                return sp.GetRequiredService<ApiSDD.Data.NoSql.InMemoryBusTrackStore>();
             });
 
             services.AddScoped<ApiSDD.Services.Empresa.IEmpresaService, ApiSDD.Services.Empresa.EmpresaService>();
@@ -267,8 +293,13 @@ internal static class ServiceCollectionExtensions
 
     private static void AddJwt(IServiceCollection services, IConfiguration configuration)
         {
-            var key = configuration["Jwt:Key"]
-                ?? throw new InvalidOperationException("Jwt:Key is required when UseJwtBearer is enabled.");
+            var key = ConfigurationSanitizer.CleanSecret(configuration["Jwt:Key"]);
+            if (!ConfigurationSanitizer.HasUsableValue(key))
+            {
+                throw new InvalidOperationException(
+                    "Jwt:Key is required and must not be a placeholder when UseJwtBearer is enabled.");
+            }
+
             if (Encoding.UTF8.GetByteCount(key) < 32)
             {
                 throw new InvalidOperationException("Jwt:Key must decode to at least 32 bytes.");
@@ -318,11 +349,27 @@ internal static class ServiceCollectionExtensions
                 });
         }
 
-    private static void FixedWindow(FixedWindowRateLimiterOptions options, int permits, int minutes)
+    private static RateLimitPartition<string> FixedWindowPartition(HttpContext context, int permits, int minutes) =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            ClientPartitionKey(context),
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = permits,
+                Window = TimeSpan.FromMinutes(minutes),
+                QueueLimit = 0,
+                AutoReplenishment = true,
+            });
+
+    /// <summary>
+    /// Clave de partición por cliente (IP). El middleware de rate limiting se ejecuta antes de
+    /// la autenticación, por lo que la identidad fiable disponible es la dirección remota.
+    /// </summary>
+    private static string ClientPartitionKey(HttpContext context)
     {
-        options.PermitLimit = permits;
-        options.Window = TimeSpan.FromMinutes(minutes);
-        options.QueueLimit = 0;
-        options.AutoReplenishment = true;
+        ArgumentNullException.ThrowIfNull(context);
+        var ip = context.Connection.RemoteIpAddress;
+        return ip is null
+            ? "client:unknown"
+            : string.Create(System.Globalization.CultureInfo.InvariantCulture, $"client:{ip}");
     }
 }

@@ -1,4 +1,6 @@
 using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Text;
 using ApiSDD.Common;
 using ApiSDD.Data;
 using ApiSDD.Data.Entities;
@@ -17,7 +19,7 @@ internal sealed class AuthService : IAuthService
 {
     private const int MaxAttempts = 5;
     private const int LockMinutes = 15;
-    private const int AccessTokenDurationSeconds = 900; // 15 minutos
+    private const int MaxLockoutKeyLength = 10;
 
     private const string FakeHash =
         "$argon2id$v=19$m=65536,t=3,p=4$AAAAAAAAAAAAAAAAAAAAAA$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
@@ -30,6 +32,7 @@ internal sealed class AuthService : IAuthService
     private readonly IValidator<LoginRequestDto> _validator;
     private readonly Services.Email.IEmailNotificationService _emailService;
     private readonly bool _skipEmailVerification;
+    private readonly int _accessTokenDurationSeconds;
 
     public AuthService(
         AppDbContext db,
@@ -49,6 +52,8 @@ internal sealed class AuthService : IAuthService
         _validator = validator ?? throw new ArgumentNullException(nameof(validator));
         _emailService = emailService ?? throw new ArgumentNullException(nameof(emailService));
         _skipEmailVerification = configuration?.GetValue<bool>("Auth:SkipEmailVerification") ?? false;
+        _accessTokenDurationSeconds =
+            JwtOptions.ResolveAccessTokenMinutes(configuration?.GetValue<int?>("Jwt:AccessTokenMinutes")) * 60;
     }
 
     // -------------------------------------------------------------------------
@@ -89,7 +94,7 @@ internal sealed class AuthService : IAuthService
         var rolUsuario = await _db.Roles.FirstOrDefaultAsync(r => r.Nombre == "Usuario", cancellationToken).ConfigureAwait(false);
         if (rolUsuario is null)
         {
-            rolUsuario = new Rol { Nombre = "Usuario", Descripcion = "Usuario final del sistema", FechaCreacion = DateTime.UtcNow };
+            rolUsuario = new Rol { Nombre = "Usuario", Descripcion = "Usuario final del sistema", FechaCreacion = _time.GetUtcNow().UtcDateTime };
             _db.Roles.Add(rolUsuario);
             await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         }
@@ -106,9 +111,9 @@ internal sealed class AuthService : IAuthService
             RolId = rolUsuario.Id,
             Activo = activarInmediato,
             CorreoVerificado = activarInmediato,
-            FechaVerificacionCorreo = activarInmediato ? DateTime.UtcNow : null,
-            FechaAvisoPrivacidad = DateTime.UtcNow,
-            FechaCreacion = DateTime.UtcNow
+            FechaVerificacionCorreo = activarInmediato ? _time.GetUtcNow().UtcDateTime : null,
+            FechaAvisoPrivacidad = _time.GetUtcNow().UtcDateTime,
+            FechaCreacion = _time.GetUtcNow().UtcDateTime
         };
 
         _db.Usuarios.Add(nuevoUsuario);
@@ -121,9 +126,9 @@ internal sealed class AuthService : IAuthService
                 Id = Guid.NewGuid(),
                 UsuarioId = nuevoUsuario.Id,
                 TokenHash = CryptoTokenHelper.HashToken(rawVerificationToken),
-                FechaExpiracion = DateTime.UtcNow.AddHours(24),
+                FechaExpiracion = _time.GetUtcNow().UtcDateTime.AddHours(24),
                 Usado = false,
-                FechaCreacion = DateTime.UtcNow
+                FechaCreacion = _time.GetUtcNow().UtcDateTime
             };
 
             _db.TokensVerificacionCorreo.Add(verificationTokenEntity);
@@ -152,7 +157,7 @@ internal sealed class AuthService : IAuthService
             Id = Guid.NewGuid(),
             UsuarioId = nuevoUsuario.Id,
             TokenHash = CryptoTokenHelper.HashToken(rawRefreshDirect),
-            FechaExpiracion = DateTime.UtcNow.AddDays(30),
+            FechaExpiracion = _time.GetUtcNow().UtcDateTime.AddDays(30),
             Revocado = false
         };
         _db.RefreshTokens.Add(refreshDirect);
@@ -163,7 +168,7 @@ internal sealed class AuthService : IAuthService
             new UsuarioPerfilResumenDto(nuevoUsuario.Id, nuevoUsuario.NombreCompleto, nuevoUsuario.Correo, rolUsuario.Nombre),
             tokenDataDirect.Token,
             rawRefreshDirect,
-            AccessTokenDurationSeconds
+            _accessTokenDurationSeconds
         );
     }
 
@@ -182,6 +187,17 @@ internal sealed class AuthService : IAuthService
             throw new BadHttpRequestException("Credenciales incompletas.");
         }
 
+        var now = _time.GetUtcNow().UtcDateTime;
+        var lockKey = LockoutKey(identificador);
+        var gate = await _db.SDDSegBloqueo
+            .FirstOrDefaultAsync(e => e.strNombreUsuario == lockKey, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (IsLocked(gate, now))
+        {
+            throw new UnauthorizedException();
+        }
+
         var user = await _db.Usuarios
             .Include(u => u.Rol)
             .FirstOrDefaultAsync(u => u.Correo == identificador, cancellationToken)
@@ -190,11 +206,13 @@ internal sealed class AuthService : IAuthService
         if (user is null)
         {
             _hasher.Verify(FakeHash, password);
+            await RecordFailureAsync(lockKey, now, cancellationToken).ConfigureAwait(false);
             throw new UnauthorizedException();
         }
 
         if (!_hasher.Verify(user.PasswordHash, password))
         {
+            await RecordFailureAsync(lockKey, now, cancellationToken).ConfigureAwait(false);
             throw new UnauthorizedException();
         }
 
@@ -209,7 +227,9 @@ internal sealed class AuthService : IAuthService
             throw new UnauthorizedException();
         }
 
-        user.UltimoAcceso = DateTime.UtcNow;
+        await ClearGateAsync(lockKey, cancellationToken).ConfigureAwait(false);
+
+        user.UltimoAcceso = _time.GetUtcNow().UtcDateTime;
 
         var rawRefreshToken = CryptoTokenHelper.GenerateSecureToken();
         var refreshTokenEntity = new RefreshToken
@@ -218,7 +238,7 @@ internal sealed class AuthService : IAuthService
             UsuarioId = user.Id,
             TokenHash = CryptoTokenHelper.HashToken(rawRefreshToken),
             DispositivoInfo = dto.dispositivoInfo,
-            FechaExpiracion = DateTime.UtcNow.AddDays(30),
+            FechaExpiracion = _time.GetUtcNow().UtcDateTime.AddDays(30),
             Revocado = false
         };
 
@@ -232,7 +252,7 @@ internal sealed class AuthService : IAuthService
             new UsuarioPerfilResumenDto(user.Id, user.NombreCompleto, user.Correo, rolNombre),
             tokenData.Token,
             rawRefreshToken,
-            AccessTokenDurationSeconds
+            _accessTokenDurationSeconds
         );
     }
 
@@ -254,7 +274,20 @@ internal sealed class AuthService : IAuthService
             .FirstOrDefaultAsync(rt => rt.TokenHash == tokenHash, cancellationToken)
             .ConfigureAwait(false);
 
-        if (existingToken is null || existingToken.Revocado || existingToken.FechaExpiracion <= DateTime.UtcNow)
+        if (existingToken is null)
+        {
+            throw new UnauthorizedException();
+        }
+
+        // Reuso de un token ya rotado/revocado: posible robo -> invalidar toda la familia.
+        if (existingToken.Revocado)
+        {
+            await RevokeAllActiveRefreshTokensAsync(existingToken.UsuarioId, _time.GetUtcNow().UtcDateTime, cancellationToken)
+                .ConfigureAwait(false);
+            throw new UnauthorizedException();
+        }
+
+        if (existingToken.FechaExpiracion <= _time.GetUtcNow().UtcDateTime)
         {
             throw new UnauthorizedException();
         }
@@ -267,7 +300,7 @@ internal sealed class AuthService : IAuthService
 
         // Rotación segura: invalidar el token anterior
         existingToken.Revocado = true;
-        existingToken.FechaRevocacion = DateTime.UtcNow;
+        existingToken.FechaRevocacion = _time.GetUtcNow().UtcDateTime;
 
         var nuevoRawRefreshToken = CryptoTokenHelper.GenerateSecureToken();
         var nuevoRefreshTokenEntity = new RefreshToken
@@ -275,7 +308,7 @@ internal sealed class AuthService : IAuthService
             Id = Guid.NewGuid(),
             UsuarioId = usuario.Id,
             TokenHash = CryptoTokenHelper.HashToken(nuevoRawRefreshToken),
-            FechaExpiracion = DateTime.UtcNow.AddDays(30),
+            FechaExpiracion = _time.GetUtcNow().UtcDateTime.AddDays(30),
             Revocado = false
         };
 
@@ -290,7 +323,7 @@ internal sealed class AuthService : IAuthService
         return new TokenRefreshResponseDto(
             tokenData.Token,
             nuevoRawRefreshToken,
-            AccessTokenDurationSeconds
+            _accessTokenDurationSeconds
         );
     }
 
@@ -311,7 +344,7 @@ internal sealed class AuthService : IAuthService
             if (token is not null && !token.Revocado)
             {
                 token.Revocado = true;
-                token.FechaRevocacion = DateTime.UtcNow;
+                token.FechaRevocacion = _time.GetUtcNow().UtcDateTime;
             }
         }
 
@@ -326,7 +359,7 @@ internal sealed class AuthService : IAuthService
             foreach (var t in activeTokens)
             {
                 t.Revocado = true;
-                t.FechaRevocacion = DateTime.UtcNow;
+                t.FechaRevocacion = _time.GetUtcNow().UtcDateTime;
             }
         }
 
@@ -352,7 +385,7 @@ internal sealed class AuthService : IAuthService
         {
             // Invalidar tokens previos vigentes
             var vigentes = await _db.TokensRecuperacion
-                .Where(t => t.UsuarioId == user.Id && !t.Usado && t.FechaExpiracion > DateTime.UtcNow)
+                .Where(t => t.UsuarioId == user.Id && !t.Usado && t.FechaExpiracion > _time.GetUtcNow().UtcDateTime)
                 .ToListAsync(cancellationToken)
                 .ConfigureAwait(false);
 
@@ -367,9 +400,9 @@ internal sealed class AuthService : IAuthService
                 Id = Guid.NewGuid(),
                 UsuarioId = user.Id,
                 TokenHash = CryptoTokenHelper.HashToken(rawToken),
-                FechaExpiracion = DateTime.UtcNow.AddMinutes(30),
+                FechaExpiracion = _time.GetUtcNow().UtcDateTime.AddMinutes(30),
                 Usado = false,
-                FechaCreacion = DateTime.UtcNow
+                FechaCreacion = _time.GetUtcNow().UtcDateTime
             };
 
             _db.TokensRecuperacion.Add(recoveryToken);
@@ -405,7 +438,7 @@ internal sealed class AuthService : IAuthService
             .FirstOrDefaultAsync(t => t.TokenHash == tokenHash, cancellationToken)
             .ConfigureAwait(false);
 
-        if (recup is null || recup.Usado || recup.FechaExpiracion <= DateTime.UtcNow)
+        if (recup is null || recup.Usado || recup.FechaExpiracion <= _time.GetUtcNow().UtcDateTime)
         {
             throw new BadHttpRequestException("El enlace de restablecimiento es inválido o ha expirado.");
         }
@@ -417,10 +450,10 @@ internal sealed class AuthService : IAuthService
         }
 
         recup.Usado = true;
-        recup.FechaUso = DateTime.UtcNow;
+        recup.FechaUso = _time.GetUtcNow().UtcDateTime;
 
         usuario.PasswordHash = _hasher.Hash(dto.nuevaPassword);
-        usuario.FechaActualizacion = DateTime.UtcNow;
+        usuario.FechaActualizacion = _time.GetUtcNow().UtcDateTime;
 
         // Revocar todos los refresh tokens activos del usuario por seguridad
         var refreshTokens = await _db.RefreshTokens
@@ -431,7 +464,7 @@ internal sealed class AuthService : IAuthService
         foreach (var rt in refreshTokens)
         {
             rt.Revocado = true;
-            rt.FechaRevocacion = DateTime.UtcNow;
+            rt.FechaRevocacion = _time.GetUtcNow().UtcDateTime;
         }
 
         await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
@@ -470,7 +503,7 @@ internal sealed class AuthService : IAuthService
             throw new BadHttpRequestException("El enlace de verificación ya ha sido utilizado.");
         }
 
-        if (verificationToken.FechaExpiracion <= DateTime.UtcNow)
+        if (verificationToken.FechaExpiracion <= _time.GetUtcNow().UtcDateTime)
         {
             throw new BadHttpRequestException("El enlace de verificación ha expirado. Por favor solicita uno nuevo.");
         }
@@ -482,12 +515,12 @@ internal sealed class AuthService : IAuthService
         }
 
         verificationToken.Usado = true;
-        verificationToken.FechaUso = DateTime.UtcNow;
+        verificationToken.FechaUso = _time.GetUtcNow().UtcDateTime;
 
         usuario.CorreoVerificado = true;
-        usuario.FechaVerificacionCorreo = DateTime.UtcNow;
+        usuario.FechaVerificacionCorreo = _time.GetUtcNow().UtcDateTime;
         usuario.Activo = true;
-        usuario.FechaActualizacion = DateTime.UtcNow;
+        usuario.FechaActualizacion = _time.GetUtcNow().UtcDateTime;
 
         await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
@@ -520,7 +553,7 @@ internal sealed class AuthService : IAuthService
             foreach (var t in pendientes)
             {
                 t.Usado = true;
-                t.FechaUso = DateTime.UtcNow;
+                t.FechaUso = _time.GetUtcNow().UtcDateTime;
             }
 
             var rawVerificationToken = CryptoTokenHelper.GenerateSecureToken();
@@ -529,9 +562,9 @@ internal sealed class AuthService : IAuthService
                 Id = Guid.NewGuid(),
                 UsuarioId = user.Id,
                 TokenHash = CryptoTokenHelper.HashToken(rawVerificationToken),
-                FechaExpiracion = DateTime.UtcNow.AddHours(24),
+                FechaExpiracion = _time.GetUtcNow().UtcDateTime.AddHours(24),
                 Usado = false,
-                FechaCreacion = DateTime.UtcNow
+                FechaCreacion = _time.GetUtcNow().UtcDateTime
             };
 
             _db.TokensVerificacionCorreo.Add(nuevoToken);
@@ -593,6 +626,36 @@ internal sealed class AuthService : IAuthService
 
     private static bool IsLocked(SDDSegBloqueo? gate, DateTime now) =>
         gate?.dteBloqueoHasta.HasValue == true && gate.dteBloqueoHasta.Value > now;
+
+    /// <summary>
+    /// Deriva una clave determinista de 10 caracteres (límite de SDDSegBloqueo.strNombreUsuario)
+    /// a partir del correo normalizado para reutilizar el lockout sin cambios de esquema.
+    /// </summary>
+    private static string LockoutKey(string identifier)
+    {
+        var hash = SHA256.HashData(Encoding.UTF8.GetBytes("login:" + identifier));
+        var hex = Convert.ToHexString(hash);
+        return hex[..MaxLockoutKeyLength];
+    }
+
+    private async Task RevokeAllActiveRefreshTokensAsync(
+        Guid usuarioId,
+        DateTime now,
+        CancellationToken cancellationToken)
+    {
+        var activeTokens = await _db.RefreshTokens
+            .Where(rt => rt.UsuarioId == usuarioId && !rt.Revocado)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        foreach (var token in activeTokens)
+        {
+            token.Revocado = true;
+            token.FechaRevocacion = now;
+        }
+
+        await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+    }
 
     private async Task RecordFailureAsync(string userName, DateTime now, CancellationToken cancellationToken)
     {

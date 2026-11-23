@@ -118,15 +118,29 @@ public sealed class AuthController : ControllerBase
         return Ok(response);
     }
 
-    // Verificación de correo electrónico
+    // Verificación de correo electrónico (soporta GET para links de email y POST para clientes API/móvil)
     [HttpGet("verificar-correo")]
     [AllowAnonymous]
     [EnableRateLimiting("Login")]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
     public async Task<IActionResult> VerificarCorreo(
         [FromQuery] string token,
         CancellationToken cancellationToken)
     {
         var response = await _service.VerificarCorreoAsync(token, cancellationToken).ConfigureAwait(false);
+        return Ok(response);
+    }
+
+    [HttpPost("verificar-correo")]
+    [AllowAnonymous]
+    [EnableRateLimiting("Login")]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+    public async Task<IActionResult> VerificarCorreoPost(
+        [FromBody] VerificarCorreoRequestDto dto,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(dto);
+        var response = await _service.VerificarCorreoAsync(dto.token, cancellationToken).ConfigureAwait(false);
         return Ok(response);
     }
 

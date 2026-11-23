@@ -71,6 +71,10 @@ public sealed record MessageResponseDto(
 );
 
 // Nuevos endpoints de verificación de correo
+public sealed record VerificarCorreoRequestDto(
+    string token
+);
+
 public sealed record ReenviarVerificacionRequestDto(
     string correo
 );

@@ -1,6 +1,7 @@
 // ---------------------------------------------------------------------------
-// MongoDbContext – encapsula el acceso a MongoDB Atlas (BusTrackNoSQL).
-// La cadena de conexión se lee desde configuración (MongoDb:ConnectionString).
+// MongoDbContext – encapsula el acceso a Azure DocumentDB / MongoDB (BusTrackDB).
+// La cadena de conexión se lee desde configuración (MongoDb:ConnectionString o ConnectionStrings:MongoDb).
+// Soporta autenticación SCRAM-SHA-256, TLS y cluster Azure DocumentDB vCore.
 // Nunca se almacena ni dispone antes de tiempo: un cliente singleton comparte el pool.
 // ---------------------------------------------------------------------------
 using System.Threading;
@@ -48,7 +49,8 @@ public sealed class MongoDbContext : IDisposable
     {
         EnsureBsonConventionsRegistered();
         ArgumentNullException.ThrowIfNull(configuration);
-        var rawConnectionString = configuration["MongoDb:ConnectionString"];
+        var rawConnectionString = configuration["MongoDb:ConnectionString"]
+            ?? configuration.GetConnectionString("MongoDb");
         var connectionString = SanitizeConnectionString(rawConnectionString);
         if (!ConfigurationSanitizer.HasUsableValue(connectionString, "EXTERNA"))
         {
@@ -66,7 +68,7 @@ public sealed class MongoDbContext : IDisposable
             var dbName = MongoUrl.Create(connectionString).DatabaseName;
             if (string.IsNullOrWhiteSpace(dbName))
             {
-                dbName = configuration["MongoDb:Database"] ?? "BusTrackNoSQL";
+                dbName = configuration["MongoDb:Database"] ?? "BusTrackDB";
             }
 
             _client = new MongoClient(settings);

@@ -118,7 +118,7 @@ jobs:
                 ASPNETCORE_ENVIRONMENT=Production \
                 DataProtection__KeysPath=/app/keys \
                 Persistence__Provider=MongoDB \
-                MongoDb__Database=BusTrackNoSQL \
+                MongoDb__Database=BusTrackDB \
                 MongoDb__ConnectionString=secretref:mongodb-cs \
                 Jwt__Key=secretref:jwt-key \
                 InternalService__Key=secretref:internal-key \
@@ -145,7 +145,7 @@ jobs:
                 ASPNETCORE_ENVIRONMENT=Production \
                 DataProtection__KeysPath=/app/keys \
                 Persistence__Provider=MongoDB \
-                MongoDb__Database=BusTrackNoSQL \
+                MongoDb__Database=BusTrackDB \
                 EnableHttpsRedirection=false \
               --secure-environment-variables \
                 MongoDb__ConnectionString="$MONGODB_CONNECTION_STRING" \

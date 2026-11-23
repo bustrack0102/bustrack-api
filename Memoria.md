@@ -155,7 +155,18 @@ Expone REST a Flutter y Angular; consume ML/GenAI por HTTP interno y es la fuent
   - Creada infraestructura declarativa completa en `infra/terraform/` (`providers.tf`, `variables.tf`, `main.tf`, `outputs.tf`) + workflow `.github/workflows/infra-lifecycle.yml` (`plan`, `apply`, `destroy` y retiro automático de ACI costosos).
   - Recursos gestionados en `northcentralus`: `Log Analytics` + `Application Insights`, `Azure Storage Account` (`media` Blob CDN), `Cognitive Services ContentSafety F0`, `Container App Environment` (Envoy HTTPS LB), `bustrack-api` (`min_replicas = 2`, HTTPS), `bustrack-landing` (HTTPS) y microservicios internos `bustrack-ml` / `bustrack-genai` (`external_enabled = false`).
   - Documentados `docs/auditoria-rubrica.md` (trazabilidad de los 20 requisitos docentes y 86/86 endpoints `EP-*`, registrando pausa explícita de `bustrack-mobile` Etapa 5) y `scripts/k6-load-test.js`.
-- **2026-11-23 (Remediación de seguridad DevSecOps y robustecimiento de producción):**
+- **2026-11-23 (Migración de conexión a Azure DocumentDB vCore — BusTrackDB):**
+  - **Objetivo y alcance:** Sustitución de la conexión de persistencia de MongoDB Atlas a Azure DocumentDB (vCore) en cluster `bustrack-db` (`bustrack-db.global.mongocluster.cosmos.azure.com`), apuntando a la base de datos `BusTrackDB`.
+  - **Estado de migración de datos:** Migración completada exitosamente al 100% mediante Azure Database Migration Service (DMS): 34 colecciones migradas, 0 errores reportados.
+  - **Protocolo y seguridad:** Compatible con protocolo MongoDB vía `MongoDB.Driver 3.5.1`. Autenticación SCRAM-SHA-256 sobre canal seguro TLS 1.2+ con soporte automático para flags de compatibilidad (`retrywrites=false`).
+  - **Componentes y archivos adaptados:**
+    - `API_SDD/Data/MongoDbContext.cs`: Soporte dual para lectura de cadena de conexión (`MongoDb:ConnectionString` y `ConnectionStrings:MongoDb`) y fallback por defecto a la base de datos `BusTrackDB`.
+    - `API_SDD/appsettings.Production.json`: Actualizado `"Database": "BusTrackDB"`.
+    - `.github/workflows/cd-azure.yml`: Actualizado `MongoDb__Database=BusTrackDB` en pasos de despliegue a Container Apps y ACI.
+    - `infra/terraform/main.tf` y `infra/terraform/variables.tf`: Actualizadas definiciones de base de datos a `BusTrackDB`.
+    - `specs/12-migracion-de-persistencia-a-cosmos-db/`: Actualizados `spec.md`, `plan.md`, `task.md` y `chart.md` documentando la migración completada a Azure DocumentDB vCore.
+  - **Gestión segura de credenciales (Zero Secrets in Git):** Ninguna credencial ni cadena con credenciales reales fue versionada en Git, `appsettings.json` ni en `Memoria.md`. Se documentan los canales de inyección recomendados: .NET User Secrets en desarrollo local, GitHub Secrets en CI/CD y Azure Key Vault / App Settings en producción.
+  - **Verificación y calidad:** Compilación limpia con 0 errores y 0 advertencias (`dotnet build API_SDD/API_SDD.csproj -c Release`), verificación de SDD en verde (`check_sdd.ps1` -> `SDD-OK`) y guardrails de seguridad superados (`critic-guardrails.ps1` -> `PASS`).
   - **1. Rate Limiting particionado por cliente/IP:** Reemplazo de fixed window limiters estáticos de bucket único global por `RateLimitPartition` por dirección remota cliente (`ClientPartitionKey`), evitando que llamadas concurrentes compartan un único cupo y mitigando DoS por agotamiento de tasa.
   - **2. Cobertura de Rate Limiting en catálogos anónimos:** Decorados los endpoints públicos de `EmpresasController` (`/empresas`, `/autocompletar`, `/comparar`, `/{id}`, `/{id}/rutas`) con política `[EnableRateLimiting("Global")]`.
   - **3. Validación estricta de Jwt:Key:** Validación mediante `ConfigurationSanitizer.HasUsableValue(key)` impidiendo que valores placeholder como `REEMPLAZAR_ENV_JWT_KEY_MIN_32_BYTES` sean aceptados en el arranque aun cumpliendo longitud mínima de 32 bytes.

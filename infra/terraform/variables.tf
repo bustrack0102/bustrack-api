@@ -61,7 +61,7 @@ variable "enable_front_door" {
 variable "mongodb_connection_string" {
   type        = string
   sensitive   = true
-  description = "Cadena SRV hacia MongoDB Atlas (BusTrackNoSQL)."
+  description = "Cadena de conexión hacia Azure DocumentDB / MongoDB (BusTrackDB)."
 }
 
 variable "jwt_secret_key" {

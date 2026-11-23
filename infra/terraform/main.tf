@@ -363,7 +363,7 @@ resource "azurerm_container_app" "api" {
 
       env {
         name  = "MongoDb__Database"
-        value = "BusTrackNoSQL"
+        value = "BusTrackDB"
       }
 
       env {

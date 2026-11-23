@@ -1,7 +1,6 @@
-# Tareas — 12-migracion-de-persistencia-a-cosmos-db — Migración de persistencia a Cosmos DB for NoSQL
+# Tareas — 12-migracion-de-persistencia-a-cosmos-db — Conexión a Azure DocumentDB (BusTrackDB)
 
-> Spec: `spec.md` · Plan: `plan.md` · Estado: Pendiente.
-> Marcar solo con evidencia. No marcar por documentar.
+> Spec: `spec.md` · Plan: `plan.md` · Estado: Completado · Fecha: 2026-11-23.
 
 ## Dependencias
 
@@ -11,49 +10,33 @@
 
 ## Actividades
 
-### T01. Diseñar modelo NoSQL
+### T01. Adaptar MongoDbContext para Azure DocumentDB y BusTrackDB
+- Soporte dual para `configuration["MongoDb:ConnectionString"]` y `configuration.GetConnectionString("MongoDb")`.
+- Fallback por defecto a base de datos `BusTrackDB`.
+- Validación de cadena limpia mediante `ConfigurationSanitizer`.
 
-- Agregados.
-- Particiones.
-- Índices.
+**Archivos:** `API_SDD/Data/MongoDbContext.cs`  
+**Terminado cuando:** Código actualizado y compilación limpia.
 
-**Archivos:** API_SDD/Data/ (nuevo), scripts de migración, specs/12-migracion-de-persistencia-a-cosmos-db/
+### T02. Actualizar configuraciones de entornos y despliegue
+- Actualizar `API_SDD/appsettings.Production.json` con `"Database": "BusTrackDB"`.
+- Actualizar pipeline `.github/workflows/cd-azure.yml` con `MongoDb__Database=BusTrackDB`.
+- Actualizar variables e infraestructura en `infra/terraform/`.
 
-**Terminado cuando:** existe evidencia verificable en código, prueba o documento.
+**Archivos:** `API_SDD/appsettings.Production.json`, `.github/workflows/cd-azure.yml`, `infra/terraform/`  
+**Terminado cuando:** Referencias a base de datos alineadas a `BusTrackDB`.
 
-### T02. Diseñar repositorios
+### T03. Actualizar documentación SDD y diagramas de migración
+- Actualizar `spec.md`, `plan.md`, `task.md` y `chart.md` con los detalles de Azure DocumentDB `bustrack-db` y 34 colecciones migradas.
+- Mantener bloque de aprobación para cumplimiento de `check_sdd.ps1`.
 
-- Interfaces.
-- SDK Cosmos.
-- ETag.
+**Archivos:** `specs/12-migracion-de-persistencia-a-cosmos-db/`  
+**Terminado cuando:** `check_sdd.ps1` retorna `SDD-OK`.
 
-**Archivos:** API_SDD/Data/ (nuevo), scripts de migración, specs/12-migracion-de-persistencia-a-cosmos-db/
+### T04. Verificación de seguridad, build y actualización de Memoria.md
+- Registrar migración en `Memoria.md` cumpliendo con sección 8 de lineamientos.
+- Validar `dotnet build -c Release` (0 errores, 0 warnings).
+- Validar scripts de guardrails y checklist de PR.
 
-**Terminado cuando:** existe evidencia verificable en código, prueba o documento.
-
-### T03. Plan de migración y rollback
-
-- Fases.
-- Validación.
-- Reversión.
-
-**Archivos:** API_SDD/Data/ (nuevo), scripts de migración, specs/12-migracion-de-persistencia-a-cosmos-db/
-
-**Terminado cuando:** existe evidencia verificable en código, prueba o documento.
-
-### T04. Definir pruebas de equivalencia
-
-- Contrato.
-- Datos.
-- Concurrencia.
-
-**Archivos:** API_SDD/Data/ (nuevo), scripts de migración, specs/12-migracion-de-persistencia-a-cosmos-db/
-
-**Terminado cuando:** existe evidencia verificable en código, prueba o documento.
-
-## Cierre
-
-- [ ] Todas las tareas con evidencia.
-- [ ] `Memoria.md` actualizado.
-- [ ] Pruebas y gates ejecutados.
-- [ ] Sin afirmaciones de implementación no verificadas.
+**Archivos:** `Memoria.md`, `specs/12-migracion-de-persistencia-a-cosmos-db/checklists/pr.md`  
+**Terminado cuando:** Build y guardrails en verde, memoria actualizada.

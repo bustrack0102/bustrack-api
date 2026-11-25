@@ -38,7 +38,7 @@ jobs:
         run: |
           dotnet test UnitTest/UnitTest.csproj -c Release --no-build
           dotnet test IntegrationTest/IntegrationTest.csproj -c Release --no-build --filter "FullyQualifiedName~HealthTests|FullyQualifiedName~ErrorsTests|FullyQualifiedName~RoutingTests|FullyQualifiedName~EpRoutingTests|FullyQualifiedName~CoreEndpointsIntegrationTests|FullyQualifiedName~OperationalEndpointsIntegrationTests|FullyQualifiedName~IntelligenceEndpointsIntegrationTests"
-          dotnet test SecurityTest/SecurityTest.csproj -c Release --no-build --filter "FullyQualifiedName~HeadersTests|FullyQualifiedName~AssemblyIntegrityTests|FullyQualifiedName~NoSqlSecurityTests|FullyQualifiedName~OperationalSecurityTests|FullyQualifiedName~IntelligenceSecurityTests"
+          dotnet test SecurityTest/SecurityTest.csproj -c Release --no-build --filter "FullyQualifiedName~HeadersTests|FullyQualifiedName~AssemblyIntegrityTests|FullyQualifiedName~NoSqlSecurityTests|FullyQualifiedName~OperationalSecurityTests|FullyQualifiedName~IntelligenceSecurityTests|FullyQualifiedName~DevSecOpsSecurityTests"
 
       - name: SDD & Critic Guardrails
         run: |

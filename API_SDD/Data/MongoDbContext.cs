@@ -68,7 +68,7 @@ public sealed class MongoDbContext : IDisposable
             var dbName = MongoUrl.Create(connectionString).DatabaseName;
             if (string.IsNullOrWhiteSpace(dbName))
             {
-                dbName = configuration["MongoDb:Database"] ?? "BusTrackDB";
+                dbName = configuration["MongoDb:Database"] ?? "BusTrackDB_Import";
             }
 
             _client = new MongoClient(settings);

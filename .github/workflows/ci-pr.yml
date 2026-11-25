@@ -34,7 +34,7 @@ jobs:
       - name: Run Integration & Security Tests (no-Docker baseline)
         run: |
           dotnet test IntegrationTest/IntegrationTest.csproj -c Release --no-build --filter "FullyQualifiedName~HealthTests|FullyQualifiedName~ErrorsTests|FullyQualifiedName~RoutingTests|FullyQualifiedName~EpRoutingTests|FullyQualifiedName~CoreEndpointsIntegrationTests|FullyQualifiedName~OperationalEndpointsIntegrationTests|FullyQualifiedName~IntelligenceEndpointsIntegrationTests"
-          dotnet test SecurityTest/SecurityTest.csproj -c Release --no-build --filter "FullyQualifiedName~HeadersTests|FullyQualifiedName~AssemblyIntegrityTests|FullyQualifiedName~NoSqlSecurityTests|FullyQualifiedName~OperationalSecurityTests|FullyQualifiedName~IntelligenceSecurityTests"
+          dotnet test SecurityTest/SecurityTest.csproj -c Release --no-build --filter "FullyQualifiedName~HeadersTests|FullyQualifiedName~AssemblyIntegrityTests|FullyQualifiedName~NoSqlSecurityTests|FullyQualifiedName~OperationalSecurityTests|FullyQualifiedName~IntelligenceSecurityTests|FullyQualifiedName~DevSecOpsSecurityTests"
 
       - name: Validación SDD & Critic Guardrails
         run: |

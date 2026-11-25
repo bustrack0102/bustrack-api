@@ -156,8 +156,10 @@ internal sealed partial class MongoBusTrackStore : IBusTrackNoSqlStore, IDisposa
         Func<TDoc, FilterDefinition<TDoc>> idFilter,
         CancellationToken ct)
     {
+        // Salvaguarda estricta: si la colección ya tiene algún documento (ej. los 23,850 importados), jamás sembrar
         if (seeds.Count == 0
-            || await collection.CountDocumentsAsync(probeFilter, cancellationToken: ct).ConfigureAwait(false) > 0)
+            || await collection.CountDocumentsAsync(probeFilter, cancellationToken: ct).ConfigureAwait(false) > 0
+            || await collection.CountDocumentsAsync(Builders<TDoc>.Filter.Empty, cancellationToken: ct).ConfigureAwait(false) > 0)
         {
             return;
         }

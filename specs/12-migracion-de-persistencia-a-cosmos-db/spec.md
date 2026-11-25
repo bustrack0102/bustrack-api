@@ -1,10 +1,10 @@
-# 12-migracion-de-persistencia-a-cosmos-db — Migración de persistencia a Azure DocumentDB (vCore) / BusTrackDB
+# 12-migracion-de-persistencia-a-cosmos-db — Migración de persistencia a Azure DocumentDB (vCore) / BusTrackDB_Import
 
-> Repositorio: BusTrack API · Estado: Completado · Fecha: 2026-11-23.
+> Repositorio: BusTrack API · Estado: Completado · Fecha: 2026-11-25.
 
 ## 1. Objetivo
 
-Configurar y verificar la conexión de la API hacia Azure DocumentDB (vCore) utilizando la base de datos `BusTrackDB`, sustituyendo MongoDB Atlas tras la migración exitosa ejecutada mediante Azure Database Migration Service (DMS).
+Configurar y verificar la conexión e integración completa de la API hacia Azure Cosmos DB for MongoDB vCore (Azure DocumentDB) utilizando la base de datos central de integración `BusTrackDB_Import` (que alberga 23,850 documentos de transporte y concentrará todas las colecciones de usuarios, autenticación, tokens y administración), conservando intacta la base original `BusTrackDB`.
 
 ## 2. Contexto
 

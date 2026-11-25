@@ -75,10 +75,30 @@ internal static class ServiceCollectionExtensions
         }).AddMvc();
 
         var origins = configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
-        services.AddCors(o => o.AddPolicy(CorsPolicy, p => p
-            .WithOrigins(origins)
-            .AllowAnyHeader()
-            .AllowAnyMethod()));
+        services.AddCors(o => o.AddPolicy(CorsPolicy, p =>
+        {
+            if (origins.Length > 0)
+            {
+                p.WithOrigins(origins);
+            }
+            else if (environment.IsDevelopment())
+            {
+                // Fallback seguro en Desarrollo para permitir depuración desde Flutter Web / Edge / Chrome / Vite
+                p.SetIsOriginAllowed(origin =>
+                {
+                    if (Uri.TryCreate(origin, UriKind.Absolute, out var uri))
+                    {
+                        return uri.Host is "localhost" or "127.0.0.1";
+                    }
+
+                    return false;
+                });
+            }
+
+            p.WithMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
+             .WithHeaders("Content-Type", "Accept", "Authorization", "X-API-Version", "X-Requested-With", "Origin")
+             .WithExposedHeaders("Retry-After", "X-Correlation-ID", "api-supported-versions");
+        }));
 
         var rate = configuration.GetSection("RateLimiting");
         var global = rate.GetValue<int?>("GlobalPerMinute") ?? 1000;

@@ -155,6 +155,21 @@ Expone REST a Flutter y Angular; consume ML/GenAI por HTTP interno y es la fuent
   - Creada infraestructura declarativa completa en `infra/terraform/` (`providers.tf`, `variables.tf`, `main.tf`, `outputs.tf`) + workflow `.github/workflows/infra-lifecycle.yml` (`plan`, `apply`, `destroy` y retiro automático de ACI costosos).
   - Recursos gestionados en `northcentralus`: `Log Analytics` + `Application Insights`, `Azure Storage Account` (`media` Blob CDN), `Cognitive Services ContentSafety F0`, `Container App Environment` (Envoy HTTPS LB), `bustrack-api` (`min_replicas = 2`, HTTPS), `bustrack-landing` (HTTPS) y microservicios internos `bustrack-ml` / `bustrack-genai` (`external_enabled = false`).
   - Documentados `docs/auditoria-rubrica.md` (trazabilidad de los 20 requisitos docentes y 86/86 endpoints `EP-*`, registrando pausa explícita de `bustrack-mobile` Etapa 5) y `scripts/k6-load-test.js`.
+- **2026-11-25 (Diagnóstico y corrección integral de CORS entre BusTrack Flutter Web y ASP.NET Core API):**
+  - **Causa raíz identificada:** En `ServiceCollectionExtensions.cs`, la política CORS `SingleOrigin` configuraba `.WithOrigins(origins)` leyendo exclusivamente `Cors:AllowedOrigins` desde configuración. En entornos locales o de desarrollo sin dicha sección configurada, `origins` era un array vacío `[]`. Adicionalmente, no se habilitaban explícitamente las cabeceras preflight requeridas por Dio en Flutter Web (`X-API-Version`, `Authorization`, `Accept`, `Content-Type`), ni se exponían cabeceras críticas como `Retry-After` o `api-supported-versions`.
+  - **Corrección en API (`ServiceCollectionExtensions.cs`):**
+    - Configuración dinámica segura: si existen orígenes en `Cors:AllowedOrigins`, se configuran directamente. Si está en entorno `Development` y la lista está vacía, se activa un fallback seguro vía `SetIsOriginAllowed` que autoriza automáticamente cualquier puerto local (`localhost` o `127.0.0.1`), permitiendo a Flutter Web depurar sin fricción en Edge, Chrome o emuladores web.
+    - Encabezados permitidos explícitos: `Content-Type`, `Accept`, `Authorization`, `X-API-Version`, `X-Requested-With`, `Origin`.
+    - Métodos HTTP permitidos explícitos: `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS`.
+    - Encabezados expuestos: `Retry-After`, `X-Correlation-ID`, `api-supported-versions`.
+  - **Configuraciones de entorno:**
+    - `appsettings.Development.json`: Añadidos orígenes de desarrollo habituales (`http://localhost:5000`, `http://localhost:5001`, `http://localhost:8080`, `http://localhost:3000`, `http://localhost:5173`, `http://127.0.0.1:*`).
+    - `appsettings.Production.json`: Añadidos dominios oficiales autorizados de BusTrack (`https://bustrack.lat`, `https://www.bustrack.lat`, `https://app.bustrack.lat`).
+  - **Alineación en Cliente Flutter (`bustrack-mobile`):**
+    - `auth_interceptor.dart`: Actualizada la lista `publicEndpoints` para incluir `healthLive` (`/health`), `healthReady` (`/health/ready`), `verificarCorreo` y `reenviarVerificacion`, evitando que solicitudes públicas lleven tokens inválidos y asegurando preflight limpio.
+  - **Pruebas automatizadas de integración CORS:**
+    - Agregadas pruebas en `DevSecOpsSecurityTests.cs`: `PreflightOptionsDevuelveHeadersCorsParaFlutterWeb`, `SolicitudPublicaConOriginRetornaHeadersCors` y `SolicitudProtegidaConBearerTokenFuncionaConCors`.
+    - Verificación exitosa en `SecurityTest`: 7/7 pruebas superadas, incluyendo OPTIONS preflight (204 NoContent + Access-Control-Allow-Origin/Methods/Headers).
 - **2026-11-25 (Implementación y ejecución de pruebas de seguridad DevSecOps y actualización CI/CD):**
   - **Suites de Seguridad Implementadas (`DevSecOpsSecurityTests`):**
     - *Detección de Reuso de Refresh Token (OAuth 2.0 Threat Model):* Verificación de invalidación de toda la familia de tokens de sesión ante intentos de replay attack.

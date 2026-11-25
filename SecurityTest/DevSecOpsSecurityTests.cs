@@ -123,4 +123,67 @@ public sealed class DevSecOpsSecurityTests : IClassFixture<ApiFactory>
         resp.Headers.GetValues("X-Content-Type-Options").Should().Contain("nosniff");
         resp.Headers.Contains("X-Frame-Options").Should().BeTrue();
     }
+
+    [Fact]
+    public async Task PreflightOptionsDevuelveHeadersCorsParaFlutterWeb()
+    {
+        using var client = _factory.CreateClient();
+
+        using var request = new HttpRequestMessage(HttpMethod.Options, new Uri("/api/v1/auth/login", UriKind.Relative));
+        request.Headers.Add("Origin", "http://localhost:5000");
+        request.Headers.Add("Access-Control-Request-Method", "POST");
+        request.Headers.Add("Access-Control-Request-Headers", "content-type,accept,authorization,x-api-version");
+
+        var response = await client.SendAsync(request).ConfigureAwait(true);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        response.Headers.Contains("Access-Control-Allow-Origin").Should().BeTrue();
+        response.Headers.GetValues("Access-Control-Allow-Origin").Should().Contain("http://localhost:5000");
+        response.Headers.Contains("Access-Control-Allow-Methods").Should().BeTrue();
+        response.Headers.GetValues("Access-Control-Allow-Methods").First().Should().Contain("POST");
+        response.Headers.Contains("Access-Control-Allow-Headers").Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task SolicitudPublicaConOriginRetornaHeadersCors()
+    {
+        using var client = _factory.CreateClient();
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, new Uri("/health", UriKind.Relative));
+        request.Headers.Add("Origin", "http://localhost:5000");
+
+        var response = await client.SendAsync(request).ConfigureAwait(true);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        response.Headers.Contains("Access-Control-Allow-Origin").Should().BeTrue();
+        response.Headers.GetValues("Access-Control-Allow-Origin").Should().Contain("http://localhost:5000");
+    }
+
+    [Fact]
+    public async Task SolicitudProtegidaConBearerTokenFuncionaConCors()
+    {
+        using var client = _factory.CreateClient();
+        var email = $"cors.auth.{Guid.NewGuid():N}@uttt.edu.mx";
+        var regResp = await client.PostAsJsonAsync(new Uri("/api/v1/auth/registro", UriKind.Relative), new
+        {
+            nombreCompleto = "Usuario CORS",
+            correo = email,
+            password = "PasswordFuerte123!",
+            confirmacionPassword = "PasswordFuerte123!",
+            aceptaAvisoPrivacidad = true,
+        }).ConfigureAwait(true);
+        regResp.StatusCode.Should().Be(HttpStatusCode.Created);
+        using var regDoc = JsonDocument.Parse(await regResp.Content.ReadAsStringAsync().ConfigureAwait(true));
+        var token = regDoc.RootElement.GetProperty("accessToken").GetString()!;
+
+        // Petición GET a recurso protegido /api/v1/usuarios/me con Origin y Authorization
+        using var meRequest = new HttpRequestMessage(HttpMethod.Get, new Uri("/api/v1/usuarios/me", UriKind.Relative));
+        meRequest.Headers.Add("Origin", "http://localhost:5000");
+        meRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        var meResp = await client.SendAsync(meRequest).ConfigureAwait(true);
+        meResp.StatusCode.Should().Be(HttpStatusCode.OK);
+        meResp.Headers.Contains("Access-Control-Allow-Origin").Should().BeTrue();
+        meResp.Headers.GetValues("Access-Control-Allow-Origin").Should().Contain("http://localhost:5000");
+    }
 }

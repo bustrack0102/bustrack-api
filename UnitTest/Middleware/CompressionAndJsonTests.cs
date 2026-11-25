@@ -38,9 +38,9 @@ public sealed class CompressionAndJsonTests : IClassFixture<ApiFactory>
     {
         using var client = _factory.CreateProductionClient();
         var response = await client.GetAsync(new Uri("/health/ready", UriKind.Relative)).ConfigureAwait(true);
-
-        response.StatusCode.Should().Be(HttpStatusCode.ServiceUnavailable);
         var body = await response.Content.ReadAsStringAsync().ConfigureAwait(true);
+        response.StatusCode.Should().Be(HttpStatusCode.ServiceUnavailable);
+
         using var doc = JsonDocument.Parse(body);
         doc.RootElement.GetProperty("status").GetString().Should().Be("Unhealthy");
         doc.RootElement.GetProperty("results").GetProperty("mongodb").GetString().Should().Be("Unhealthy");

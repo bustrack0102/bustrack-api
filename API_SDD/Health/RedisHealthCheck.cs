@@ -15,12 +15,12 @@ namespace ApiSDD.Health;
     Justification = "A health check must report Degraded/Unhealthy rather than throwing unhandled exceptions.")]
 internal sealed class RedisHealthCheck : IHealthCheck
 {
-    private readonly IDistributedCache _cache;
+    private readonly IServiceProvider _serviceProvider;
     private readonly IConfiguration _configuration;
 
-    public RedisHealthCheck(IDistributedCache cache, IConfiguration configuration)
+    public RedisHealthCheck(IServiceProvider serviceProvider, IConfiguration configuration)
     {
-        _cache = cache ?? throw new ArgumentNullException(nameof(cache));
+        _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
         _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
     }
 
@@ -31,7 +31,18 @@ internal sealed class RedisHealthCheck : IHealthCheck
         ArgumentNullException.ThrowIfNull(context);
         var redisCs = ConfigurationSanitizer.CleanSecret(_configuration["Redis:ConnectionString"]);
         var usingRedis = ConfigurationSanitizer.HasUsableValue(redisCs);
-        var usingMongoCache = _cache is MongoDistributedCache;
+
+        IDistributedCache cache;
+        try
+        {
+            cache = _serviceProvider.GetRequiredService<IDistributedCache>();
+        }
+        catch (Exception ex)
+        {
+            return HealthCheckResult.Unhealthy("distributed cache service unavailable in production.", ex);
+        }
+
+        var usingMongoCache = cache is MongoDistributedCache;
         if (!usingRedis && !usingMongoCache)
         {
             return HealthCheckResult.Healthy("distributed-memory cache active.");
@@ -42,12 +53,12 @@ internal sealed class RedisHealthCheck : IHealthCheck
         try
         {
             const string probeKey = "bustrack:health:ping";
-            await _cache.SetStringAsync(
+            await cache.SetStringAsync(
                 probeKey,
                 "1",
                 new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(10) },
                 cts.Token).ConfigureAwait(false);
-            var val = await _cache.GetStringAsync(probeKey, cts.Token).ConfigureAwait(false);
+            var val = await cache.GetStringAsync(probeKey, cts.Token).ConfigureAwait(false);
             if (val != "1")
             {
                 return HealthCheckResult.Degraded("distributed cache probe mismatch.");

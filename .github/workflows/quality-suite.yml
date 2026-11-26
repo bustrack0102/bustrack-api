@@ -1,0 +1,78 @@
+name: Quality & Testing Repertoire
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lint-roslyn-and-deps:
+    name: 1. Linting Roslyn, Complejidad y Dependencias
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+      - run: dotnet restore API_SDD.slnx
+      - run: dotnet build API_SDD.slnx -c Release --no-restore
+      - run: dotnet list API_SDD.slnx package --vulnerable
+
+  unit-concurrency-snapshot-mutation:
+    name: 2. Unitarias, Concurrencia, Snapshot, Contrato y Cobertura
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+      - run: dotnet restore API_SDD.slnx
+      - run: dotnet build API_SDD.slnx -c Release --no-restore
+      - run: dotnet test UnitTest/UnitTest.csproj -c Release --no-build --collect:"XPlat Code Coverage" --results-directory ./TestResults --verbosity normal
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: api-quality-coverage
+          path: ./TestResults/**/coverage.cobertura.xml
+          retention-days: 14
+
+  integration-and-contract:
+    name: 3. Integración, API y Contratos
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+      - run: dotnet restore API_SDD.slnx
+      - run: dotnet build API_SDD.slnx -c Release --no-restore
+      - run: dotnet test IntegrationTest/IntegrationTest.csproj -c Release --no-build --filter "FullyQualifiedName~HealthTests|FullyQualifiedName~ErrorsTests|FullyQualifiedName~RoutingTests|FullyQualifiedName~EpRoutingTests|FullyQualifiedName~CoreEndpointsIntegrationTests|FullyQualifiedName~OperationalEndpointsIntegrationTests|FullyQualifiedName~IntelligenceEndpointsIntegrationTests"
+      - run: dotnet test ContractTest/ContractTest.csproj -c Release --no-build --filter "FullyQualifiedName~PingFixtureTests"
+
+  security-and-sast:
+    name: 4. Seguridad, Headers y Semgrep
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+      - run: dotnet restore API_SDD.slnx
+      - run: dotnet build API_SDD.slnx -c Release --no-restore
+      - run: dotnet test SecurityTest/SecurityTest.csproj -c Release --no-build --filter "FullyQualifiedName~HeadersTests|FullyQualifiedName~AssemblyIntegrityTests|FullyQualifiedName~NoSqlSecurityTests|FullyQualifiedName~OperationalSecurityTests|FullyQualifiedName~IntelligenceSecurityTests|FullyQualifiedName~DevSecOpsSecurityTests"
+      - uses: semgrep/semgrep-action@v1
+        with:
+          config: .semgrep/rules/semgrep.yaml
+
+  sdd-and-maintainability:
+    name: 5. Guardrails SDD y Mantenibilidad
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: pwsh -File scripts/check_sdd.ps1
+      - run: pwsh -File scripts/critic-guardrails.ps1

@@ -52,8 +52,8 @@ public sealed class RutasController : ControllerBase
     [AllowAnonymous]
     [EnableRateLimiting("Global")]
     public async Task<IActionResult> Buscar(
-        [FromQuery] Guid? paradaOrigenId = null,
-        [FromQuery] Guid? paradaDestinoId = null,
+        [FromQuery] string? paradaOrigenId = null,
+        [FromQuery] string? paradaDestinoId = null,
         [FromQuery] string? destinoTuristicoId = null,
         [FromQuery] Guid? empresaId = null,
         [FromQuery] int? medioTransporteId = null,

@@ -28,8 +28,8 @@ public interface ITransportCatalogService
         CancellationToken ct);
 
     Task<RutaBusquedaResponse> SearchRutasAsync(
-        Guid? paradaOrigenId,
-        Guid? paradaDestinoId,
+        string? paradaOrigenId,
+        string? paradaDestinoId,
         string? destinoTuristicoId,
         Guid? empresaId,
         int? medioTransporteId,
@@ -219,8 +219,8 @@ internal sealed partial class TransportCatalogService : ITransportCatalogService
     // ---------------------------------------------------------------------
     [SuppressMessage("Maintainability", "CA1502:Avoid excessive complexity", Justification = "Búsqueda multicriterio con múltiples filtros del contrato EP-RP-04.")]
     public async Task<RutaBusquedaResponse> SearchRutasAsync(
-        Guid? paradaOrigenId,
-        Guid? paradaDestinoId,
+        string? paradaOrigenId,
+        string? paradaDestinoId,
         string? destinoTuristicoId,
         Guid? empresaId,
         int? medioTransporteId,
@@ -238,11 +238,12 @@ internal sealed partial class TransportCatalogService : ITransportCatalogService
         var horarios = await _store.ListHorariosAsync(null, ct).ConfigureAwait(false);
         var empresas = await _store.ListEmpresasAsync(ct).ConfigureAwait(false);
 
-        paradasById.TryGetValue(paradaOrigenId?.ToString() ?? string.Empty, out var origenParada);
+        var origenId = paradaOrigenId?.Trim();
+        paradasById.TryGetValue(origenId ?? string.Empty, out var origenParada);
         var origenTexto = origenParada?.Nombre ?? origen;
-        if (origenParada is null && paradaOrigenId.HasValue)
+        if (origenParada is null && !string.IsNullOrWhiteSpace(origenId))
         {
-            origenTexto = paradaOrigenId.Value.ToString();
+            origenTexto = origenId;
         }
 
         DestinoDoc? destinoDoc = null;
@@ -251,7 +252,8 @@ internal sealed partial class TransportCatalogService : ITransportCatalogService
             destinoDoc = await _store.GetDestinoByIdAsync(destinoTuristicoId.Trim(), ct).ConfigureAwait(false);
         }
 
-        paradasById.TryGetValue(paradaDestinoId?.ToString() ?? string.Empty, out var destinoParada);
+        var destinoId = paradaDestinoId?.Trim();
+        paradasById.TryGetValue(destinoId ?? string.Empty, out var destinoParada);
         var destinoTexto = destinoParada?.Nombre ?? destinoDoc?.Nombre ?? destino;
 
         var empresaById = empresas.ToDictionary(e => e.Id);
@@ -283,9 +285,9 @@ internal sealed partial class TransportCatalogService : ITransportCatalogService
             int? origenIdx = null;
             int? destinoIdx = null;
 
-            if (paradaOrigenId.HasValue || !string.IsNullOrWhiteSpace(origen))
+            if (!string.IsNullOrWhiteSpace(origenId) || !string.IsNullOrWhiteSpace(origen))
             {
-                origenIdx = FindStopIndex(stops, paradaOrigenId?.ToString(), origenTexto ?? origen);
+                origenIdx = FindStopIndex(stops, origenId, origenTexto ?? origen);
                 if (origenIdx is null)
                 {
                     continue;
@@ -304,9 +306,9 @@ internal sealed partial class TransportCatalogService : ITransportCatalogService
 
                 destinoIdx = destinoStop;
             }
-            else if (paradaDestinoId.HasValue || !string.IsNullOrWhiteSpace(destino))
+            else if (!string.IsNullOrWhiteSpace(destinoId) || !string.IsNullOrWhiteSpace(destino))
             {
-                destinoIdx = FindStopIndex(stops, paradaDestinoId?.ToString(), destinoTexto ?? destino);
+                destinoIdx = FindStopIndex(stops, destinoId, destinoTexto ?? destino);
                 if (destinoIdx is null)
                 {
                     continue;

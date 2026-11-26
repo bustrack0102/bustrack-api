@@ -215,3 +215,17 @@ Expone REST a Flutter y Angular; consume ML/GenAI por HTTP interno y es la fuent
   - **12. Índices TTL en Mongo:** Añadidos índices de expiración automática (`ExpireAfter = TimeSpan.Zero` en `fechaExpiracion`) para colecciones de tokens (`refresh_tokens`, `tokens_recuperacion`, `tokens_verificacion_correo`).
   - **13. Manejo resiliente de desconexión:** Captura segura de `OperationCanceledException` cuando `RequestAborted.IsCancellationRequested` sin intentar escribir en socket cerrado.
   - **14. Validaciones:** Compilación de toda la solución `Release` con 0 errores y 0 advertencias, pruebas SDD (`SDD-OK`) y guardrails critic (`PASS`).
+- **2026-11-26 (Auditoría Técnica, Validación de Integración Cosmos DB for MongoDB y Preparación Flutter):**
+  - **Objetivo y alcance:** Auditoría técnica integral de la conexión con Azure Cosmos DB for MongoDB (vCore), verificación de consultas sobre las 8 colecciones principales de transporte (23,850 documentos) y colecciones auxiliares, resolución de preflight CORS (`OPTIONS`) para Flutter Web y corrección de sondas de disponibilidad.
+  - **Componentes y archivos adaptados:**
+    - `API_SDD/Data/MongoDbContext.cs`: Fallback por defecto de base de datos homologado a `BusTrackDB`.
+    - `API_SDD/appsettings.Production.json`: Configurado `"Database": "BusTrackDB"`.
+    - `API_SDD/Health/RedisHealthCheck.cs`: Resolución diferida de `IDistributedCache` con tolerancia a degradación; evita 500 no controlado cuando el caché distribuido no está inicializado, reportando `503 Degraded` ordenadamente.
+    - `UnitTest/Middleware/CompressionAndJsonTests.cs`: Corrección de aserción en `ProductionConPersistenceMongoSinCadenaRetorna503SinTrazas` tras la estabilización de `RedisHealthCheck`.
+    - `API_SDD/Program.cs`: Orden estricto del pipeline HTTP (`UseRouting` -> `UseCors` -> `UseAuthentication` -> `UseAuthorization`), permitiendo preflights `OPTIONS` y cabecera `X-API-Version` requerida por el cliente Flutter Web.
+    - `.github/workflows/cd-azure.yml`: Integración de la suite de pruebas DevSecOps (`DevSecOpsSecurityTests`) en el flujo de integración continua.
+  - **Resultados de validación:**
+    - Unit Tests: 145/145 aprobados (0 fallos).
+    - Integration Tests (CoreEndpoints): 25/25 aprobados (0 fallos).
+    - Security Tests (DevSecOps): 7/7 aprobados (0 fallos).
+    - SDD Guardrails: `check_sdd.ps1` -> `SDD-OK`, `critic-guardrails.ps1` -> `PASS`.

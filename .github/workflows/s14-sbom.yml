@@ -1,0 +1,27 @@
+﻿name: Sec 14. Generacion de SBOM (CycloneDX)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sbom:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: anchore/sbom-action@v0.24.4
+        with:
+          path: .
+          format: cyclonedx-json
+          output-file: sbom.cdx.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bustrack-api-sbom-cyclonedx
+          path: sbom.cdx.json
+          retention-days: 14

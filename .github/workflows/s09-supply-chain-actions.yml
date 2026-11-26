@@ -19,9 +19,14 @@ jobs:
         with:
           dotnet-version: '10.0.x'
       - run: |
-          for f in .github/workflows/*.yml; do
-            grep -q "permissions:" "" || { echo "Missing permissions in "; exit 1; }
-          done
+          pwsh -Command '
+            Get-ChildItem .github/workflows -Filter *.yml | ForEach-Object {
+              if ((Get-Content $_.FullName -Raw) -notmatch "permissions:") {
+                throw "Missing permissions in $($_.Name)"
+              }
+            }
+            Write-Host "All workflows enforce explicit permissions."
+          '
       - run: dotnet restore API_SDD.slnx
       - run: dotnet build API_SDD.slnx -c Release --no-restore
       - run: dotnet test SecurityTest/SecurityTest.csproj -c Release --no-build --filter "FullyQualifiedName~AssemblyIntegrityTests"

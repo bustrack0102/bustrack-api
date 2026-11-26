@@ -1,0 +1,24 @@
+﻿name: 04. Pruebas de Mutacion
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mutation-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+      - run: test -f stryker-config.json
+      - run: dotnet restore API_SDD.slnx
+      - run: dotnet build API_SDD.slnx -c Release --no-restore
+      - run: dotnet test UnitTest/UnitTest.csproj -c Release --no-build --filter "FullyQualifiedName~MutationSensitivity"

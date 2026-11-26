@@ -1,21 +1,24 @@
 {
-  "$schema": "https://json.schemastore.org/stryker-config",
   "stryker-config": {
     "project": "API_SDD/API_SDD.csproj",
-    "test-projects": ["UnitTest/UnitTest.csproj"],
-    "test-case-filter": "FullyQualifiedName~UnitTest",
-    "mutation-level": "Standard",
-    "since": {
-      "enabled": true,
-      "target": "main"
-    },
-    "mutate": ["**/*.cs", "!**/Migrations/*", "!**/*.Designer.cs"],
+    "test-projects": [
+      "UnitTest/UnitTest.csproj"
+    ],
+    "solution": "API_SDD.slnx",
+    "reporters": [
+      "progress",
+      "cleartext",
+      "json"
+    ],
     "thresholds": {
       "high": 80,
       "low": 60,
-      "break": 0
+      "break": 50
     },
-    "reporters": ["cleartext", "json"],
-    "coverage-analysis": "perTest"
+    "concurrency": 4,
+    "mutate": [
+      "Security/*.cs",
+      "Validators/*.cs"
+    ]
   }
 }

@@ -1,0 +1,21 @@
+﻿name: Sec 06. Seguridad IaC (Terraform)
+
+on:
+  push:
+    branches: [feat/security-and-engineering-repertoire, main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  iac-security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: |
+          if [ -d infra/terraform ]; then
+            ! grep -rnE '(password|secret_key|connection_string)\s*=\s*"[^$]' infra/terraform/
+          fi

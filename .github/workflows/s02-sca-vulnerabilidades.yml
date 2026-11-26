@@ -1,0 +1,22 @@
+﻿name: Sec 02. SCA Dependencias Vulnerables
+
+on:
+  push:
+    branches: [feat/security-and-engineering-repertoire, main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sca:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+      - run: dotnet restore API_SDD.slnx
+      - run: dotnet list API_SDD.slnx package --vulnerable --include-transitive

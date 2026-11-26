@@ -1,0 +1,27 @@
+﻿name: Sec 09. Supply Chain e Integridad
+
+on:
+  push:
+    branches: [feat/security-and-engineering-repertoire, main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  supply-chain:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+      - run: |
+          for f in .github/workflows/*.yml; do
+            grep -q "permissions:" "" || { echo "Missing permissions in "; exit 1; }
+          done
+      - run: dotnet restore API_SDD.slnx
+      - run: dotnet build API_SDD.slnx -c Release --no-restore
+      - run: dotnet test SecurityTest/SecurityTest.csproj -c Release --no-build --filter "FullyQualifiedName~AssemblyIntegrityTests"

@@ -1,0 +1,25 @@
+﻿name: Sec 01. SAST
+
+on:
+  push:
+    branches: [feat/security-and-engineering-repertoire, main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sast:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+      - run: dotnet restore API_SDD.slnx
+      - run: dotnet build API_SDD.slnx -c Release --no-restore
+      - uses: semgrep/semgrep-action@v1
+        with:
+          config: .semgrep/rules/semgrep.yaml

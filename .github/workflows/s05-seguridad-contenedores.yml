@@ -1,0 +1,26 @@
+﻿name: Sec 05. Seguridad de Contenedores (Trivy)
+
+on:
+  push:
+    branches: [feat/security-and-engineering-repertoire, main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  container-security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: '! grep -iE "(password|secret|token)=" Dockerfile'
+      - run: docker build -t bustrack-api:trivy-scan -f Dockerfile .
+      - uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: bustrack-api:trivy-scan
+          format: table
+          ignore-unfixed: true
+          vuln-type: os,library
+          severity: CRITICAL,HIGH

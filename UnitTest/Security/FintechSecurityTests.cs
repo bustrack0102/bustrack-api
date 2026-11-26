@@ -45,7 +45,9 @@ public sealed class FintechSecurityTests
     {
         var hasher = CreateHasher();
         var validHash = hasher.Hash(TestDataFactory.Password);
-        var tamperedHash = validHash[..^1] + (validHash[^1] == 'A' ? 'B' : 'A');
+        var idx = validHash.Length - 8;
+        var tamperedChar = validHash[idx] == 'A' ? 'B' : 'A';
+        var tamperedHash = string.Concat(validHash.AsSpan(0, idx), tamperedChar.ToString(), validHash.AsSpan(idx + 1));
 
         hasher.Verify(tamperedHash, TestDataFactory.Password).Should().BeFalse();
         hasher.Verify(validHash, "   ").Should().BeFalse();

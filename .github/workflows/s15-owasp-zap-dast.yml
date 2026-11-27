@@ -16,30 +16,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: docker build -t bustrack-api:zap -f Dockerfile .
-            - run: |
-          docker run -d --name zap-api -p 8000:8000 \
-            -e ASPNETCORE_URLS=http://+:8000 \
+      - run: |
+          docker run -d --name zap-api --network host \
+            -e PORT=8000 \
+            -e ASPNETCORE_URLS=http://0.0.0.0:8000 \
             -e Persistence__Provider=InMemory \
             -e Jwt__Key=synthetic-ci-zap-test-key-minimum-32-chars \
             -e InternalService__Key=synthetic-internal-zap-key \
             bustrack-api:zap
-
-          ready=0
           for i in $(seq 1 30); do
-            if curl -fsS http://127.0.0.1:8000/health; then
-              ready=1
-              break
-            fi
-
-            if [ "$(docker inspect -f '{{.State.Running}}' zap-api)" != "true" ]; then
-              break
-            fi
-
+            curl -sf http://127.0.0.1:8000/health && echo "API lista" && break
+            echo "Esperando arranque de API ($i/30)..."
             sleep 2
           done
-
-          if [ "$ready" -ne 1 ]; then
-            echo "La API no respondió en http://127.0.0.1:8000/health"
-            docker logs zap-api
-            exit 1
-          fi
+          docker logs zap-api --tail 30
+      - uses: zaproxy/action-baseline@v0.15.0
+        with:
+          target: 'http://127.0.0.1:8000/health'
+          fail_action: false

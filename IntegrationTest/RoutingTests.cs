@@ -64,8 +64,6 @@ public sealed class RoutingTests : IClassFixture<ApiFactory>
 
         (await TestHttp.GetAsync(prodOpenApi, "/openapi/v1.json").ConfigureAwait(true)).StatusCode
             .Should().Be(HttpStatusCode.OK);
-        (await TestHttp.GetAsync(prodOpenApi, "/scalar").ConfigureAwait(true)).StatusCode
-            .Should().Be(HttpStatusCode.OK);
         (await TestHttp.GetAsync(prodOpenApi, "/scalar/v1").ConfigureAwait(true)).StatusCode
             .Should().Be(HttpStatusCode.OK);
     }

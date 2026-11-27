@@ -90,12 +90,6 @@ if (app.Environment.IsDevelopment() || builder.Configuration.GetValue("EnableOpe
                .WithTheme(ScalarTheme.Moon)
                .WithDefaultHttpClient(ScalarTarget.JavaScript, ScalarClient.Fetch);
     });
-    app.MapScalarApiReference("/scalar", options =>
-    {
-        options.WithTitle("BusTrack API - Documentación Interactiva")
-               .WithTheme(ScalarTheme.Moon)
-               .WithDefaultHttpClient(ScalarTarget.JavaScript, ScalarClient.Fetch);
-    });
 }
 
 app.MapHealthChecks("/health", new() { Predicate = static _ => false });

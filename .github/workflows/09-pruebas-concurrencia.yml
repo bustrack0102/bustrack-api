@@ -1,4 +1,4 @@
-﻿name: 09. Pruebas de Concurrencia
+name: 09. Pruebas de Concurrencia
 
 on:
   push:
@@ -14,7 +14,7 @@ jobs:
   concurrency-tests:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: '10.0.x'

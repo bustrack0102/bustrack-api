@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text.Json;
 using FluentAssertions;
+using Microsoft.AspNetCore.Hosting;
 using UnitTest.Common;
 
 namespace IntegrationTest;
@@ -47,10 +48,26 @@ public sealed class RoutingTests : IClassFixture<ApiFactory>
             .Should().Be(HttpStatusCode.OK);
 
         var prod = _factory.CreateProductionClient();
+        // Por defecto en producción EnableOpenApi está deshabilitado en pruebas para verificar aislamiento seguro
         (await TestHttp.GetAsync(prod, "/openapi/v1.json").ConfigureAwait(true)).StatusCode
             .Should().Be(HttpStatusCode.NotFound);
         (await TestHttp.GetAsync(prod, "/scalar/v1").ConfigureAwait(true)).StatusCode
             .Should().Be(HttpStatusCode.NotFound);
+
+        // Con EnableOpenApi activado en producción (como en Azure Container Apps) responde 200 OK
+        using var prodOpenApi = _factory.WithWebHostBuilder(b =>
+        {
+            b.UseEnvironment("Production");
+            b.UseSetting("EnableOpenApi", "true");
+            b.UseSetting("EnableProviderStates", "false");
+        }).CreateClient();
+
+        (await TestHttp.GetAsync(prodOpenApi, "/openapi/v1.json").ConfigureAwait(true)).StatusCode
+            .Should().Be(HttpStatusCode.OK);
+        (await TestHttp.GetAsync(prodOpenApi, "/scalar").ConfigureAwait(true)).StatusCode
+            .Should().Be(HttpStatusCode.OK);
+        (await TestHttp.GetAsync(prodOpenApi, "/scalar/v1").ConfigureAwait(true)).StatusCode
+            .Should().Be(HttpStatusCode.OK);
     }
 
     [Fact]

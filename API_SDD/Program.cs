@@ -81,10 +81,21 @@ app.UseAuthorization();
 app.UseResponseCompression();
 app.MapControllers();
 
-if (app.Environment.IsDevelopment())
+if (app.Environment.IsDevelopment() || builder.Configuration.GetValue("EnableOpenApi", false))
 {
     app.MapOpenApi();
-    app.MapScalarApiReference();
+    app.MapScalarApiReference(options =>
+    {
+        options.WithTitle("BusTrack API - Documentación Interactiva")
+               .WithTheme(ScalarTheme.Moon)
+               .WithDefaultHttpClient(ScalarTarget.JavaScript, ScalarClient.Fetch);
+    });
+    app.MapScalarApiReference("/scalar", options =>
+    {
+        options.WithTitle("BusTrack API - Documentación Interactiva")
+               .WithTheme(ScalarTheme.Moon)
+               .WithDefaultHttpClient(ScalarTarget.JavaScript, ScalarClient.Fetch);
+    });
 }
 
 app.MapHealthChecks("/health", new() { Predicate = static _ => false });

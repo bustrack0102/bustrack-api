@@ -122,6 +122,7 @@ jobs:
                 MongoDb__ConnectionString=secretref:mongodb-cs \
                 Jwt__Key=secretref:jwt-key \
                 InternalService__Key=secretref:internal-key \
+                EnableOpenApi=true \
                 EnableHttpsRedirection=false -o none
             FQDN=$(az containerapp show -g rg-bustrack-ncus -n bustrack-api --query "properties.configuration.ingress.fqdn" -o tsv)
             echo "API_URL=https://${FQDN}" >> $GITHUB_ENV

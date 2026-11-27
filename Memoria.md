@@ -229,3 +229,12 @@ Expone REST a Flutter y Angular; consume ML/GenAI por HTTP interno y es la fuent
     - Integration Tests (CoreEndpoints): 25/25 aprobados (0 fallos).
     - Security Tests (DevSecOps): 7/7 aprobados (0 fallos).
     - SDD Guardrails: `check_sdd.ps1` -> `SDD-OK`, `critic-guardrails.ps1` -> `PASS`.
+- **2026-11-26 (Configuración de Documentación Interactiva Scalar + OpenAPI para Azure):**
+  - **Objetivo y alcance:** Implementar y exponer la interfaz interactiva Scalar y el documento OpenAPI v1 en producción para Azure Container Apps en las rutas `/scalar` y `/openapi/v1.json`, permitiendo pruebas y exploración de endpoints autenticados y públicos.
+  - **Componentes y archivos adaptados:**
+    - `API_SDD/Program.cs`: Mapeo dual de rutas interactivas `app.MapScalarApiReference()` y `app.MapScalarApiReference("/scalar")` condicionado a `IsDevelopment() || EnableOpenApi`, configurado con tema `ScalarTheme.Moon` y cliente HTTP por defecto (`JavaScript Fetch`).
+    - `API_SDD/appsettings.Production.json`: Configurado `"EnableOpenApi": true`.
+    - `.github/workflows/cd-azure.yml`: Añadida variable de entorno `EnableOpenApi=true` en el despliegue de Azure Container Apps.
+    - `IntegrationTest/RoutingTests.cs`: Actualizada la prueba de enrutamiento para validar que en producción con `EnableOpenApi=true` las rutas `/openapi/v1.json`, `/scalar` y `/scalar/v1` retornen `200 OK`.
+  - **Seguridad:** El middleware `SecurityHeadersMiddleware` mantiene exención de Content-Security-Policy estricto para `/scalar` y `/openapi` sin exponer secretos, tokens ni infraestructura sensible.
+  - **Verificación:** Solución completa compilada en Release (0 errores, 0 advertencias).

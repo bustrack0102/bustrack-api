@@ -1,4 +1,4 @@
-﻿name: Sec 15. DAST en Vivo (OWASP ZAP)
+name: Sec 15. DAST en Vivo (OWASP ZAP)
 
 on:
   push:

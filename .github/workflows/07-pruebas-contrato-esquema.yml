@@ -1,4 +1,4 @@
-﻿name: 07. Pruebas de Contrato y Esquema
+name: 07. Pruebas de Contrato y Esquema
 
 on:
   push:
@@ -14,7 +14,7 @@ jobs:
   contract-tests:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: '10.0.x'

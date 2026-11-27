@@ -1,4 +1,4 @@
-﻿name: Sec 05. Seguridad de Contenedores (Trivy)
+name: Sec 05. Seguridad de Contenedores (Trivy)
 
 on:
   push:
@@ -14,7 +14,7 @@ jobs:
   container-security:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - run: '! grep -iE "(password|secret|token)=" Dockerfile'
       - run: docker build -t bustrack-api:trivy-scan -f Dockerfile .
       - uses: aquasecurity/trivy-action@v0.36.0

@@ -1,4 +1,4 @@
-﻿name: Sec 06. Seguridad IaC (Terraform)
+name: Sec 06. Seguridad IaC (Terraform)
 
 on:
   push:
@@ -14,7 +14,7 @@ jobs:
   iac-security:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - run: |
           if [ -d infra/terraform ]; then
             ! grep -rnE '(password|secret_key|connection_string)\s*=\s*"[^$]' infra/terraform/
